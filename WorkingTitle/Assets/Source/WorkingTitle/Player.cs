@@ -15,9 +15,9 @@ namespace WorkingTitle
             });
             this.Move(new Vector3()
             {
-                x = Input.GetAxis("Horizontal"),
+                x = Input.GetAxisRaw("Horizontal"),
                 y = 0,
-                z = Input.GetAxis("Vertical")
+                z = Input.GetAxisRaw("Vertical")
             });
 
             this.IsSprinting = Input.GetKey(KeyCode.LeftShift);
