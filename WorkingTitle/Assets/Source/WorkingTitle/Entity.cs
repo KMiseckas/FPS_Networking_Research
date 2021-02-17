@@ -26,7 +26,6 @@ namespace WorkingTitle
 
         #region Fields
 
-        [SerializeField] private bool _isPlayer;
         private Rigidbody _rigidbody;
         private Camera _camera;
         private Animator _animator;
@@ -36,9 +35,16 @@ namespace WorkingTitle
         [SerializeField] private float _sensitivityY;
         private Vector3 _inputMovement;
         private Vector2 _inputRotation;
-        private bool _isSprinting;
+
         [SerializeField] private float _groundDistanceCheck = 0.01f;
+        private Vector3 _lastGroundedMovement;
+        private float _lastGroundedSpeed;
+        private Vector3 _lastGroundedDirection;
+        private bool _lastIsGroundedCheck;
+        
+        private bool _isSprinting;
         private bool _isGrounded;
+        private bool _isJumping;
 
         #endregion
 
@@ -60,13 +66,8 @@ namespace WorkingTitle
         protected virtual void Update()
         {
             this.UpdateGroundedStatus();
-
             this.RotateImpl();
-
-            if (this._isPlayer)
-            {
-                this.MoveImpl();
-            }
+            this.MoveImpl();
         }
 
         #endregion
@@ -79,6 +80,9 @@ namespace WorkingTitle
         /// <param name="inputMovement"></param>
         public void Move(Vector3 inputMovement)
         {
+            if(this._isGrounded)
+                this._lastGroundedMovement = this._inputMovement;
+            
             this._inputMovement = inputMovement;
         }
 
@@ -94,18 +98,64 @@ namespace WorkingTitle
         }
 
         /// <summary>
+        ///     Makes the player jump
+        /// </summary>
+        public void Jump()
+        {
+            if(this.CanJump())
+            {
+                this.JumpImpl();
+            }
+        }
+        
+        /// <summary>
+        ///     Checks if the player can jump
+        /// </summary>
+        private bool CanJump() => this._isGrounded && !this._isJumping;
+
+        /// <summary>
+        ///     Player jump implementation
+        /// </summary>
+        private void JumpImpl()
+        {
+            this._isJumping = true;
+            this._isGrounded = false;
+            this._rigidbody.AddForce(Vector3.up * 300);
+        }
+
+        private Vector3 GetMovementInput() => this._isGrounded ? this._inputMovement : this._lastGroundedMovement;
+
+        /// <summary>
         ///     Calculates the players movement speed
         /// </summary>
         private float CalculateMovementSpeed()
         {
+            if (!this._isGrounded)
+                return this._lastGroundedSpeed;
+
+            var movement = this.GetMovementInput();
             var speed = this._walkSpeed;
 
             if (this.IsSprinting)
                 speed = this._runSpeed;
-            else if (this._inputMovement.z < 0)
+            else if (movement.z < 0)
                 speed *= .5f;
 
             return speed;
+        }
+
+        /// <summary>
+        ///     Calculates the players movement direction
+        /// </summary>
+        /// <param name="movement"></param>
+        private Vector3 CalculateMovementDirection(Vector3 movement)
+        {
+            if (!this._isGrounded)
+                return this._lastGroundedDirection;
+
+            var direction = this.transform.forward * movement.z + this.transform.right * movement.x;
+            direction.Normalize();
+            return direction;
         }
 
         /// <summary>
@@ -113,16 +163,20 @@ namespace WorkingTitle
         /// </summary>
         private void MoveImpl()
         {
-            var newPosition = this._rigidbody.position;
+            var movement = this.GetMovementInput();
             var speed = this.CalculateMovementSpeed();
-            var direction = this.transform.forward * this._inputMovement.z + this.transform.right * this._inputMovement.x;
-            direction.Normalize();
+            var direction = this.CalculateMovementDirection(movement);
 
-            newPosition += direction * speed * Time.deltaTime;
+            if(this._isGrounded)
+            {
+                this._lastGroundedSpeed = speed;
+                this._lastGroundedDirection = direction;
+            }
 
             this.SetMovementAnimatorParams();
 
-            this._rigidbody.MovePosition(newPosition);
+            var position = this._rigidbody.position + direction * speed * Time.deltaTime;
+            this._rigidbody.MovePosition(position);
         }
 
         /// <summary>
@@ -172,9 +226,24 @@ namespace WorkingTitle
         /// </summary>
         private void UpdateGroundedStatus()
         {
-            this._isGrounded = Physics.CheckSphere(transform.position, this._groundDistanceCheck);
+            var isGrounded = Physics.Raycast(transform.position + Vector3.up * this._groundDistanceCheck * .5f, Vector3.down, this._groundDistanceCheck);
+
+            if(this._isJumping)
+            {
+                if(this._lastIsGroundedCheck && !isGrounded)
+                {
+                    this._lastIsGroundedCheck = false;
+                    this._isGrounded = false;
+                    this._isJumping = false;
+                }
+            }
+            else
+            {
+                this._isGrounded = isGrounded;
+                this._lastIsGroundedCheck = isGrounded;
+            }
         }
 
-        #endregion
+#endregion
     }
 }
