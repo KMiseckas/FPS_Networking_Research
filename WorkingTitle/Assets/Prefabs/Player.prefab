@@ -1740,7 +1740,7 @@ GameObject:
   - component: {fileID: 707006447391116867}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1826,8 +1826,8 @@ MonoBehaviour:
   _isPlayer: 1
   _walkSpeed: 4
   _runSpeed: 8
-  _sensitivityX: 50
-  _sensitivityY: 50
+  _sensitivityX: 5
+  _sensitivityY: 5
   _groundDistanceCheck: 0.1
 --- !u!1 &735354347911634948
 GameObject:
