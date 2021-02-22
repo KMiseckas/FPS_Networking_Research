@@ -1,6 +1,6 @@
-namespace WorkingTitle
+namespace WorkingTitle.Entities.Player
 {
-    public class Player : Entity
+    public class PlayerEntity : Entity
     {
         #region Functions
 

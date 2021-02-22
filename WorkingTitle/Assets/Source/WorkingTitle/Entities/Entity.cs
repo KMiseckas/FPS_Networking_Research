@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WorkingTitle
+namespace WorkingTitle.Entities
 {
     [RequireComponent(typeof(Animator))]
     public abstract class Entity : MonoBehaviour
@@ -58,12 +58,6 @@ namespace WorkingTitle
             this._characterController = this.GetComponent<CharacterController>();
             this._camera = Camera.main;
             this._animator = this.GetComponent<Animator>();
-        }
-
-        protected virtual void Start()
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
         }
 
         protected virtual void Update()

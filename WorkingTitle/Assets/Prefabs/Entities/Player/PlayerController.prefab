@@ -134,4 +134,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c29d28d5ab333d74cb9f51cc2391920c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _pawn: {fileID: 0}
+  syncMode: 1
+  syncInterval: 0.1
+  _PlayerEntityToSpawnURL: Entities/Player/Player.prefab
