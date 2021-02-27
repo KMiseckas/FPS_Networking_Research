@@ -1,9 +1,10 @@
+using Mirror;
 using UnityEngine;
 
-namespace WorkingTitle
+namespace WorkingTitle.Entities
 {
     [RequireComponent(typeof(Animator))]
-    public abstract class Entity : MonoBehaviour
+    public abstract class Entity : NetworkBehaviour
     {
         #region Constants
 
@@ -26,14 +27,13 @@ namespace WorkingTitle
 
         private Rigidbody _rigidbody;
         private CharacterController _characterController;
-        private Camera _camera;
         private Animator _animator;
         [SerializeField] private float _walkSpeed;
         [SerializeField] private float _runSpeed;
         [SerializeField] private float _sensitivityX;
         [SerializeField] private float _sensitivityY;
-        private Vector3 _inputMovement;
-        private Vector2 _inputRotation;
+        protected Vector3 _inputMovement;
+        protected Vector2 _inputRotation;
 
         [SerializeField] private float _groundDistanceCheck = 0.01f; //For physics controller
         private Vector3 _lastGroundedMovement;
@@ -56,14 +56,7 @@ namespace WorkingTitle
         {
             this._rigidbody = this.GetComponent<Rigidbody>();
             this._characterController = this.GetComponent<CharacterController>();
-            this._camera = Camera.main;
             this._animator = this.GetComponent<Animator>();
-        }
-
-        protected virtual void Start()
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
         }
 
         protected virtual void Update()
@@ -87,7 +80,7 @@ namespace WorkingTitle
         ///     Applies input to later move the player
         /// </summary>
         /// <param name="inputMovement"></param>
-        public void Move(Vector3 inputMovement)
+        public virtual void Move(Vector3 inputMovement)
         {
             if(this._isGrounded)
                 this._lastGroundedMovement = this._inputMovement;
@@ -99,7 +92,7 @@ namespace WorkingTitle
         ///     Applies input to later rotate the player
         /// </summary>
         /// <param name="inputRotation"></param>
-        public void Rotate(Vector2 inputRotation)
+        public virtual void Rotate(Vector2 inputRotation)
         {
             this._inputRotation.x += inputRotation.x * this._sensitivityX * 10 * Time.deltaTime;
             this._inputRotation.x = Mathf.Clamp(this._inputRotation.x, MIN_ROT_X, MAX_ROT_X);
@@ -109,23 +102,28 @@ namespace WorkingTitle
         /// <summary>
         ///     Makes the player jump
         /// </summary>
-        public void Jump()
+        public virtual void Jump()
         {
             if(this.CanJump())
             {
                 this.JumpImpl();
             }
         }
+
+        public virtual void Interact()
+        {
+
+        }
         
         /// <summary>
         ///     Checks if the player can jump
         /// </summary>
-        private bool CanJump() => this._isGrounded && !this._isJumping;
+        protected virtual bool CanJump() => this._isGrounded && !this._isJumping;
 
         /// <summary>
         ///     Player jump implementation
         /// </summary>
-        private void JumpImpl()
+        protected virtual void JumpImpl()
         {
             this._isJumping = true;
             this._isGrounded = false;
@@ -178,7 +176,7 @@ namespace WorkingTitle
         /// <summary>
         ///     Movement implementation
         /// </summary>
-        private void MoveImpl()
+        protected virtual void MoveImpl()
         {
             var movement = this.GetMovementInput();
             var speed = this.CalculateMovementSpeed();
@@ -236,9 +234,8 @@ namespace WorkingTitle
         /// <summary>
         ///     Rotate implementation
         /// </summary>
-        private void RotateImpl()
+        protected virtual void RotateImpl()
         {
-            this._camera.transform.localEulerAngles = new Vector3(-this._inputRotation.x, 0, 0);
             this.transform.localEulerAngles = new Vector3(0, this._inputRotation.y, 0);
         }
 
