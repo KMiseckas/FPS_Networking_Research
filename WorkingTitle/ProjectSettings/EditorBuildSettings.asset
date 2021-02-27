@@ -5,9 +5,12 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
+  - enabled: 0
+    path: 
+    guid: 00000000000000000000000000000000
   - enabled: 1
-    path: Assets/Scenes/Development/Addresables Test.unity
-    guid: e7c79e4422e0f414b82887ebd4736431
+    path: Assets/Scenes/Development/Klaud_Networking.unity
+    guid: 305a67f5579b4ad4f9f1468c52247c31
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: cc838b9ced3c3254aa4e858ef75f0ae6, type: 2}
     com.unity.input.settings: {fileID: 11400000, guid: 07dc905597eddf3479e4b5b0f253dc95, type: 2}

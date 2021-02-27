@@ -5,7 +5,7 @@ using Mirror;
 
 namespace WorkingTitle.Networking
 {
-    public class DefaultNetworkManager : NetworkManager
+    public class GameNetworkManager : NetworkManager
     {
         public delegate void ConnectionEventHandler(NetworkConnection connection);
         public delegate void ServerEventHandler();
@@ -43,13 +43,7 @@ namespace WorkingTitle.Networking
 
         public override void OnClientConnect(NetworkConnection conn)
         {
-            if(!clientLoadedScene)
-            {
-                if(!ClientScene.ready)
-                {
-                    Client_OnClientConnectedToServer (conn);
-                }
-            }
+            Client_OnClientConnectedToServer (conn);
         }
 
         public override void OnClientDisconnect(NetworkConnection conn)

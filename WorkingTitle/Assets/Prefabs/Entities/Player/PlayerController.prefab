@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &7806270060405410503
 Transform:
   m_ObjectHideFlags: 0
@@ -134,6 +134,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c29d28d5ab333d74cb9f51cc2391920c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  syncMode: 1
+  syncMode: 0
   syncInterval: 0.1
-  _PlayerEntityToSpawnURL: Entities/Player/Player.prefab
+  _DefaultPlayerEntity: {fileID: 6769380712087042894, guid: 9a470b90b43143c49aa803a662885e5a, type: 3}

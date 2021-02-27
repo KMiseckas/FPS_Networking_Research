@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7651068391869949081}
   - component: {fileID: 7651068391869949084}
   - component: {fileID: 7651068391869949087}
-  - component: {fileID: 7651068391869949086}
+  - component: {fileID: 1777748089}
   m_Layer: 0
   m_Name: Network Manager
   m_TagString: Untagged
@@ -42,7 +42,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 7651068391869949080}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8e853b3c35445364c9a0d2bea2b09632, type: 3}
+  m_Script: {fileID: 11500000, guid: b1c72af9d364a664e8634b5f54c0caf5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   dontDestroyOnLoad: 1
@@ -54,7 +54,7 @@ MonoBehaviour:
   serverBatchInterval: 0
   offlineScene: 
   onlineScene: 
-  transport: {fileID: 7651068391869949086}
+  transport: {fileID: 1777748089}
   networkAddress: localhost
   maxConnections: 100
   disconnectInactiveConnections: 0
@@ -62,9 +62,13 @@ MonoBehaviour:
   authenticator: {fileID: 0}
   playerPrefab: {fileID: 0}
   autoCreatePlayer: 0
-  playerSpawnMethod: 1
+  playerSpawnMethod: 0
   spawnPrefabs:
-  - {fileID: 5890560936853567077, guid: b7dd46dbf38c643f09e206f9fa4be008, type: 3}
+  - {fileID: 7806270060405410502, guid: 6cc08535775256d4482a83a39af45bde, type: 3}
+  - {fileID: 4742915436281619812, guid: 8135bdc2b652b8147a00170d2ea3b802, type: 3}
+  - {fileID: 1874456743026115076, guid: 4639ef14872ac894990efb008da45a12, type: 3}
+  - {fileID: 773065875710732622, guid: 51f5b21bd3d1891499ae9a63f22863c4, type: 3}
+  - {fileID: 0}
 --- !u!114 &7651068391869949087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -80,7 +84,7 @@ MonoBehaviour:
   showGUI: 1
   offsetX: 0
   offsetY: 0
---- !u!114 &7651068391869949086
+--- !u!114 &1777748089
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -89,16 +93,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 7651068391869949080}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b0fecffa3f624585964b0d0eb21b18e, type: 3}
+  m_Script: {fileID: 11500000, guid: c7424c1070fad4ba2a7a96b02fbeb4bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Port: 7777
+  port: 7777
   NoDelay: 1
-  Interval: 10
-  FastResend: 2
-  CongestionWindow: 0
-  SendWindowSize: 4096
-  ReceiveWindowSize: 4096
-  debugLog: 0
-  statisticsGUI: 0
-  statisticsLog: 0
+  SendTimeout: 5000
+  ReceiveTimeout: 5000
+  serverMaxMessageSize: 16384
+  serverMaxReceivesPerTick: 10000
+  serverSendQueueLimitPerConnection: 10000
+  serverReceiveQueueLimitPerConnection: 10000
+  clientMaxMessageSize: 16384
+  clientMaxReceivesPerTick: 1000
+  clientSendQueueLimit: 10000
+  clientReceiveQueueLimit: 10000

@@ -4,6 +4,8 @@ using UnityEngine.InputSystem;
 using WorkingTitle.Input;
 using Mirror;
 using System.Collections;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace WorkingTitle.Entities.Player
 {
@@ -15,75 +17,52 @@ namespace WorkingTitle.Entities.Player
         /// <summary>
         /// The prefab of the player entity to spawn.
         /// </summary>
-        [SerializeField] private string _PlayerEntityToSpawnURL;
+        [SerializeField] private GameObject _DefaultPlayerEntity;
 
-        private PlayerEntity _Pawn;
-
-        [SyncVar(hook = nameof(OnPawnNetIDChanged))]
-        private uint _PawnNetID;
+        private PlayerEntity _PlayerEntity;
 
         private PlayerInput _input;
         private Vector2 _inputLook;
 
-        private PlayerState _playerState;
+        private PlayerState _PlayerState;
 
 
         #endregion
 
         #region Properties
 
-        public PlayerState PlayerState
-        {
-            set => _playerState = value;
-            get => _playerState;
-        }
+        public PlayerState PlayerState { set => _PlayerState = value; get => _PlayerState; }
 
-        public string PlayerEntityToSpawnURL
-        {
-            get => _PlayerEntityToSpawnURL;
-        }
+        public PlayerEntity PlayerEntity { get => _PlayerEntity; set => _PlayerEntity=value; }
 
         #endregion
 
         #region Unity Messages
 
-        private void Awake()
+        public override void OnStartClient()
         {
+            bool isOnHost = isServer && !isLocalPlayer;
+
             //Player controller should only exist on owner of the object.
-            if(!isLocalPlayer || !isServer)
+            if((!isLocalPlayer && !isOnHost) || isOnHost)
             {
-                Destroy (this);
+                return;
             }
 
-            //Temp code to set url to null so we know server-client communication works as expected (in the future, the url would be null to start with).
-            if(isServer)
-            {
-                _PlayerEntityToSpawnURL = null;
-            }
-
-            if(isLocalPlayer)
-            {
-                DeterminePlayerEntityURLToUse();
-            }
+            this.gameObject.SetActive(true);
         }
 
-        private void OnEnable()
+        public override void OnStartLocalPlayer()
         {
-            if(isLocalPlayer)
-            {
-                this.BindAction("Player", "Look", this.Player_Look, ActionEventType.Performed);
-                this.BindAction("Player", "Interact", this.Player_Interact, ActionEventType.Performed);
-                this.BindAction("Player", "Jump", this.Player_Jump, ActionEventType.Performed);
-                this.BindAction("Player", "Sprint", this.Player_BeginSprint, ActionEventType.Started);
-                this.BindAction("Player", "Sprint", this.Player_EndSprint, ActionEventType.Canceled);
-            }
+            HookInput();
+            CmdSpawnPlayerEntity();
         }
 
         private void Update()
         {
             if(isLocalPlayer)
             {
-                if (_Pawn != null)
+                if (_PlayerEntity != null)
                 {
                     Rotate (ConsumeRotation());
                     Move (GetAction("Player", "Move").ReadValue<Vector2>());
@@ -94,6 +73,15 @@ namespace WorkingTitle.Entities.Player
         #endregion
 
         #region Functions
+
+        private void HookInput()
+        {
+            BindAction("Player", "Look", this.Player_Look, ActionEventType.Performed);
+            BindAction("Player", "Interact", this.Player_Interact, ActionEventType.Performed);
+            BindAction("Player", "Jump", this.Player_Jump, ActionEventType.Performed);
+            BindAction("Player", "Sprint", this.Player_BeginSprint, ActionEventType.Started);
+            BindAction("Player", "Sprint", this.Player_EndSprint, ActionEventType.Canceled);
+        }
 
         /// <summary>
         ///     Gets an action from the player input
@@ -149,60 +137,32 @@ namespace WorkingTitle.Entities.Player
 
         protected void Rotate(Vector2 rotationInput)
         {
-            this._Pawn.Rotate (new Vector2(rotationInput.x, rotationInput.y));
+            this._PlayerEntity.Rotate (new Vector2(rotationInput.y, rotationInput.x));
         }
 
         protected void Move(Vector2 movementInput)
         {
-            _Pawn.Move (new Vector3(movementInput.x, 0, movementInput.y));
-        }
-
-        protected void DeterminePlayerEntityURLToUse()
-        {
-            //TODO: Find out which player entity the player has chosen and set url here, for now we use a preset url.
-
-            Cmd_SetPlayerEntityToSpawnURL(_PlayerEntityToSpawnURL);
-        }
-
-        [Command]
-        private void Cmd_SetPlayerEntityToSpawnURL(string playerEntityURL)
-        {
-            _PlayerEntityToSpawnURL = playerEntityURL;
+            _PlayerEntity.Move (new Vector3(movementInput.x, 0, movementInput.y));
         }
 
         /// <summary>
         /// Attach an instance of player entity to the player controller.
         /// </summary>
         /// <param name="playerEntity">Instance of the object to attach to this player controller</param>
-        public void AttachPlayerEntity(PlayerEntity playerEntity)
+        [Command]
+        private void CmdSpawnPlayerEntity()
         {
-            _PawnNetID = playerEntity.gameObject.GetComponent<NetworkIdentity>().netId;
-            _Pawn = playerEntity;
+            NetLog.ServerLog(this, $"Spawning player entity across all clients.");
+
+            _PlayerEntity = Instantiate(_DefaultPlayerEntity).GetComponent<PlayerEntity>();
+            _PlayerEntity.PlayerControllerID = this.netId;
+
+            NetworkServer.Spawn(_PlayerEntity.gameObject, this.connectionToClient);
         }
 
-        private void OnPawnNetIDChanged(uint _, uint newValue)
+        public void SetPlayerEntity(PlayerEntity playerEntity)
         {
-            if(NetworkIdentity.spawned.TryGetValue(_PawnNetID, out NetworkIdentity identity))
-            {
-                AttachPlayerEntity(identity.gameObject.GetComponent<PlayerEntity>());
-            }
-            else
-            {
-                StartCoroutine(SetTarget());
-            }
-        }
-
-        IEnumerator SetTarget()
-        {
-            while(_Pawn == null)
-            {
-                yield return new WaitForSeconds(0.05f);
-
-                if(NetworkIdentity.spawned.TryGetValue(_PawnNetID, out NetworkIdentity identity))
-                {
-                    AttachPlayerEntity(identity.gameObject.GetComponent<PlayerEntity>());
-                }
-            }
+            _PlayerEntity = playerEntity;
         }
 
         #endregion
@@ -224,7 +184,7 @@ namespace WorkingTitle.Entities.Player
         /// <param name="obj"></param>
         private void Player_BeginSprint(InputAction.CallbackContext obj)
         {
-            this._Pawn.IsSprinting = true;
+            this._PlayerEntity.IsSprinting = true;
         }
 
         /// <summary>
@@ -233,7 +193,7 @@ namespace WorkingTitle.Entities.Player
         /// <param name="obj"></param>
         private void Player_EndSprint(InputAction.CallbackContext obj)
         {
-            this._Pawn.IsSprinting = false;
+            this._PlayerEntity.IsSprinting = false;
         }
 
         /// <summary>
@@ -242,7 +202,7 @@ namespace WorkingTitle.Entities.Player
         /// <param name="obj"></param>
         private void Player_Jump(InputAction.CallbackContext obj)
         {
-            this._Pawn.Jump();
+            this._PlayerEntity.Jump();
         }
 
         /// <summary>
@@ -251,9 +211,10 @@ namespace WorkingTitle.Entities.Player
         /// <param name="obj"></param>
         private void Player_Interact(InputAction.CallbackContext obj)
         {
-            this._Pawn.Interact();
+            this._PlayerEntity.Interact();
         }
 
         #endregion
     }
+
 }

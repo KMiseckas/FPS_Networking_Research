@@ -15,6 +15,8 @@ namespace WorkingTitle.GameFlow
     /// </summary>
     public abstract class GameMode : NetworkBehaviour
     {
+        #region Fields
+
         /// <summary>
         /// Reference to the <see cref="PlayerController"/> prefab that should be created for newly connected players.
         /// </summary>
@@ -41,43 +43,69 @@ namespace WorkingTitle.GameFlow
         /// </summary>
         private GameState _CurrentGameState;
 
-        private Dictionary<int, PlayerController> _ControllerDictionary = new Dictionary<int, PlayerController> ();
+        private readonly Dictionary<int, PlayerController> _ControllerDictionary = new Dictionary<int, PlayerController> ();
 
-        private void OnEnable()
+        #endregion
+
+        protected virtual void OnEnable()
         {
-            DefaultNetworkManager.Server_OnClientDisconnectFromServer += Server_OnClientDisconnectedFromServer;
-            DefaultNetworkManager.Server_OnConnectedClientReady += Server_OnConnectedClientReady;
-            DefaultNetworkManager.Server_OnAddPlayerRequest += Server_OnAddPlayerRequest;
+            GameNetworkManager.Server_OnClientDisconnectFromServer += OnClientDisconnectedFromServer;
+            GameNetworkManager.Server_OnConnectedClientReady += OnConnectedClientReady;
+            GameNetworkManager.Server_OnAddPlayerRequest += OnAddPlayerRequest;
         }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
-            DefaultNetworkManager.Server_OnClientDisconnectFromServer -= Server_OnClientDisconnectedFromServer;
-            DefaultNetworkManager.Server_OnConnectedClientReady -= Server_OnConnectedClientReady;
-            DefaultNetworkManager.Server_OnAddPlayerRequest -= Server_OnAddPlayerRequest;
+            GameNetworkManager.Server_OnClientDisconnectFromServer -= OnClientDisconnectedFromServer;
+            GameNetworkManager.Server_OnConnectedClientReady -= OnConnectedClientReady;
+            GameNetworkManager.Server_OnAddPlayerRequest -= OnAddPlayerRequest;
         }
 
-        private void Server_OnAddPlayerRequest(NetworkConnection connection)
+        public override void OnStartServer()
+        {
+            _CurrentGameState = Instantiate(_StartingGameState);
+
+            NetworkServer.Spawn(_CurrentGameState.gameObject);
+        }
+
+        [Server]
+        public PlayerController TryGetPlayerController(int connectionID)
+        {
+            _ControllerDictionary.TryGetValue(connectionID, out PlayerController controller);
+
+            return controller;
+        }
+
+        [Server]
+        protected virtual void OnAddPlayerRequest(NetworkConnection connection)
         {
             //TODO: change the position and rotation to spawn points
             PlayerController playerController = Instantiate (_PlayerControllerToSpawn, new Vector3 (0, 10, 0), Quaternion.identity);
 
             playerController.PlayerState = Instantiate (_PlayerStateToSpawn);
 
-            //Link the connection with the player controller. This tells the server which client owns the controller.
+            //Link the connection with the player controller. This tells the server which client owns the controller and also spawns the controller on all clients.
             NetworkServer.AddPlayerForConnection (connection, playerController.gameObject);
 
-            _ControllerDictionary.Add (connection.connectionId, playerController);
+            //NetworkServer.Spawn(_PlayerStateToSpawn.gameObject);
 
-            StartCoroutine(TrySpawnPlayerEntityFromURL(playerController, connection));
+            _ControllerDictionary.Add (connection.connectionId, playerController);;
         }
 
-        private void Server_OnClientDisconnectedFromServer(NetworkConnection connection)
+        [Server]
+        protected virtual void OnClientDisconnectedFromServer(NetworkConnection connection)
         {
+            _ControllerDictionary.TryGetValue(connection.connectionId, out PlayerController playerController);
 
+            NetworkServer.Destroy(playerController.PlayerEntity.gameObject);
+            NetworkServer.Destroy(playerController.PlayerState.gameObject);
+            NetworkServer.Destroy(playerController.gameObject);
+
+            _ControllerDictionary.Remove(connection.connectionId);
         }
 
-        private void Server_OnConnectedClientReady(NetworkConnection connection)
+        [Server]
+        protected virtual void OnConnectedClientReady(NetworkConnection connection)
         {
             if (connection.identity == null)
             {
@@ -86,55 +114,5 @@ namespace WorkingTitle.GameFlow
 
             NetworkServer.SetClientReady (connection);
         }
-
-        private void AttachPlayerEntityToPlayerController(PlayerController playerController, PlayerEntity playerEntity)
-        {
-            playerController.AttachPlayerEntity(playerEntity);
-
-            NetworkServer.Spawn(playerEntity.gameObject);
-        }
-
-        private IEnumerator TrySpawnPlayerEntityFromURL(PlayerController playerController, NetworkConnection connection)
-        {
-            while(playerController.PlayerEntityToSpawnURL == null)
-            {
-                yield return new WaitForSeconds(0.1f);
-            }
-
-            if(!IsPlayerEntityValid(playerController.PlayerEntityToSpawnURL, connection))
-            {
-                yield break;
-            }
-
-            LoadHandleCompleted loadHandleCompleted = new LoadHandleCompleted();
-
-            Addressables.InstantiateAsync(playerController.PlayerEntityToSpawnURL).Completed += loadHandleCompleted.OnPlayerEntityInstantiated;
-
-            while(loadHandleCompleted.PlayerEntityGameObject == null)
-            {
-                yield return null;
-            }
-
-            AttachPlayerEntityToPlayerController(playerController, loadHandleCompleted.PlayerEntityGameObject.GetComponent<PlayerEntity>());
-        }
-
-        /// <summary>
-        /// Check if this player entity is allowed to be spawned in by the connecting player.
-        /// </summary>
-        /// <returns></returns>
-        private bool IsPlayerEntityValid(string playerEntityURL, NetworkConnection connection)
-        {
-            return true;
-        }
-    }
-}
-
-internal class LoadHandleCompleted
-{
-    internal GameObject PlayerEntityGameObject;
-
-    internal void OnPlayerEntityInstantiated(AsyncOperationHandle<GameObject> handle)
-    {
-        PlayerEntityGameObject = handle.Result;
     }
 }

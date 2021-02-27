@@ -10,25 +10,12 @@ namespace WorkingTitle.GameFlow
     /// </summary>
     public class GameInstance : MonoBehaviour
     {
+        #region Fields
         private static GameInstance _GameInstance;
 
+        private static int _ConnectionToServerID;
+
         private static object _Lock = new object();
-
-        public static GameInstance GetInstance
-        {
-            get
-            {
-                lock (_Lock)
-                {
-                    if (_GameInstance == null)
-                    {
-                        _GameInstance = FindObjectOfType<GameInstance> ();
-                    }
-
-                    return _GameInstance;
-                }
-            }
-        }
 
         /// <summary>
         /// Reference to the instance of the <see cref="GameMode"/> prefab for this game session. Exists on server only.
@@ -37,38 +24,57 @@ namespace WorkingTitle.GameFlow
         [Tooltip("Prefab reference to the game mode that should be started in this game session")]
         private GameMode _GameMode;
 
+        #endregion
+
+        public static GameInstance GetInstance
+        {
+            get
+            {
+                lock(_Lock)
+                {
+                    if(_GameInstance == null)
+                    {
+                        _GameInstance = FindObjectOfType<GameInstance>();
+                    }
+
+                    return _GameInstance;
+                }
+            }
+        }
+
+        public GameMode GameMode { get => _GameMode; set => _GameMode=value; }
+
+        public static int ConnectionToServerID { get => _ConnectionToServerID; set => _ConnectionToServerID=value; }
+
         private void OnEnable()
         {
-            DefaultNetworkManager.Client_OnClientConnectedToServer += Client_OnClientConnectedToServer;
-            DefaultNetworkManager.Client_OnClientDisconnectFromServer += Client_OnClientDisconnectedFromServer;
-            DefaultNetworkManager.Client_OnConnectedClientNoLongerReady += Client_OnClientNotReady;
+            GameNetworkManager.Client_OnClientConnectedToServer += OnClientConnectedToServer;
+            GameNetworkManager.Client_OnClientDisconnectFromServer += OnClientDisconnectedFromServer;
+            GameNetworkManager.Client_OnConnectedClientNoLongerReady += OnClientNotReady;
 
-            DefaultNetworkManager.Server_OnStartHost += OnStartServer;
-            DefaultNetworkManager.Server_OnStopHost += OnStopServer;
+            GameNetworkManager.Server_OnStartHost += OnStartServer;
+            GameNetworkManager.Server_OnStopHost += OnStopServer;
         }
 
         private void OnDisable()
         {
-            DefaultNetworkManager.Client_OnClientConnectedToServer -= Client_OnClientConnectedToServer;
-            DefaultNetworkManager.Client_OnClientDisconnectFromServer -= Client_OnClientDisconnectedFromServer;
-            DefaultNetworkManager.Client_OnConnectedClientNoLongerReady -= Client_OnClientNotReady;
+            GameNetworkManager.Client_OnClientConnectedToServer -= OnClientConnectedToServer;
+            GameNetworkManager.Client_OnClientDisconnectFromServer -= OnClientDisconnectedFromServer;
+            GameNetworkManager.Client_OnConnectedClientNoLongerReady -= OnClientNotReady;
 
-            DefaultNetworkManager.Server_OnStartHost -= OnStartServer;
-            DefaultNetworkManager.Server_OnStopHost -= OnStopServer;
+            GameNetworkManager.Server_OnStartHost -= OnStartServer;
+            GameNetworkManager.Server_OnStopHost -= OnStopServer;
         }
 
         private void Awake()
         {
-            //This is a singleton object.
-            if(_GameInstance == null)
-            {
-                _GameInstance = this;
-            }
-            else
+            if(_GameInstance != null)
             {
                 Destroy (this.gameObject);
                 return;
             }
+
+            _GameInstance = this;
 
             DontDestroyOnLoad (this);
         }
@@ -77,7 +83,6 @@ namespace WorkingTitle.GameFlow
         {
             if(NetworkServer.active)
             {
-                //TODO apply game mode using prefab URL/Resources in runtime. Currently applying a development game mode in-editor as a reference.
                 _GameMode = Instantiate(_GameMode);
             }
         }
@@ -87,23 +92,30 @@ namespace WorkingTitle.GameFlow
 
         }
 
-        private void Client_OnClientConnectedToServer(NetworkConnection connection)
+        [Client]
+        private void OnClientConnectedToServer(NetworkConnection connection)
         {
-            //TODO we might want to load a scene before setting player as ready, amend this logic later in development to make sure scene is loaded before we set the player as `Ready`.
-
             //Request the server to initialise the player on the server and clients (as a `PlayerController` instance).
             ClientScene.Ready (connection);
             ClientScene.AddPlayer (connection);
+
+            ConnectionToServerID = connection.connectionId;
+
+            Debug.Log($"Client has connected to server with Connection ID [{connection.connectionId}]");
         }
 
-        private void Client_OnClientNotReady(NetworkConnection connection)
+        [Client]
+        private void OnClientNotReady(NetworkConnection connection)
         {
 
         }
 
-        private void Client_OnClientDisconnectedFromServer(NetworkConnection connection)
+        [Client]
+        private void OnClientDisconnectedFromServer(NetworkConnection connection)
         {
+            ConnectionToServerID = 0;
 
+            Debug.Log($"Client has disconnected from server with Connection ID [{connection.connectionId}]");
         }
     }
 }

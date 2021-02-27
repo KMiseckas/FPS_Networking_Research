@@ -10,5 +10,6 @@ namespace WorkingTitle.GameFlow
     /// </summary>
     public abstract class GameState : NetworkBehaviour
     {
+
     }
 }
