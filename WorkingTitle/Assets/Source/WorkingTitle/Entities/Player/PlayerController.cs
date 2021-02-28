@@ -22,10 +22,10 @@ namespace WorkingTitle.Entities.Player
         private PlayerEntity _PlayerEntity;
 
         private PlayerInput _input;
-        private Vector2 _inputLook;
 
         private PlayerState _PlayerState;
 
+        private InputData _FrameInputData = new InputData();
 
         #endregion
 
@@ -48,25 +48,26 @@ namespace WorkingTitle.Entities.Player
             {
                 return;
             }
-
-            this.gameObject.SetActive(true);
         }
 
         public override void OnStartLocalPlayer()
         {
+            this.gameObject.SetActive(true);
+
             HookInput();
             CmdSpawnPlayerEntity();
         }
 
         private void Update()
         {
-            if(isLocalPlayer)
+            InputData cmdInputData = _FrameInputData;
+
+            if(!cmdInputData.Equals(_FrameInputData))
             {
-                if (_PlayerEntity != null)
-                {
-                    Rotate (ConsumeRotation());
-                    Move (GetAction("Player", "Move").ReadValue<Vector2>());
-                }
+                NetLog.ClientLog(this, $"Moving Character : Forward ({_FrameInputData.MoveZ})");
+
+                CmdApplyInputToPlayerEntity(_FrameInputData);
+                RotateCamera(_FrameInputData.RotateAroundY);
             }
         }
 
@@ -76,11 +77,16 @@ namespace WorkingTitle.Entities.Player
 
         private void HookInput()
         {
-            BindAction("Player", "Look", this.Player_Look, ActionEventType.Performed);
-            BindAction("Player", "Interact", this.Player_Interact, ActionEventType.Performed);
-            BindAction("Player", "Jump", this.Player_Jump, ActionEventType.Performed);
-            BindAction("Player", "Sprint", this.Player_BeginSprint, ActionEventType.Started);
-            BindAction("Player", "Sprint", this.Player_EndSprint, ActionEventType.Canceled);
+            BindAction("Player", "Look", Player_PerformLook, ActionEventType.Performed);
+            BindAction("Player", "Look", Player_CancelLook, ActionEventType.Canceled);
+            BindAction("Player", "Move", Player_PerformMove, ActionEventType.Performed);
+            BindAction("Player", "Move", Player_CancelMove, ActionEventType.Canceled);
+            BindAction("Player", "Interact", Player_PerformInteract, ActionEventType.Performed);
+            BindAction("Player", "Interact", Player_CancelInteract, ActionEventType.Canceled);
+            BindAction("Player", "Jump", Player_PerformJump, ActionEventType.Performed);
+            BindAction("Player", "Jump", Player_CancelJump, ActionEventType.Canceled);
+            BindAction("Player", "Sprint", Player_PerformSprint, ActionEventType.Performed);
+            BindAction("Player", "Sprint", Player_CancelSprint, ActionEventType.Canceled);
         }
 
         /// <summary>
@@ -125,24 +131,32 @@ namespace WorkingTitle.Entities.Player
         }
 
         /// <summary>
-        ///     Consumes the rotation input
+        /// Apply input data from a <see cref="InputData"/> struct value.
         /// </summary>
-        private Vector2 ConsumeRotation()
+        /// <param name="inputData"></param>
+        [Command]
+        protected void CmdApplyInputToPlayerEntity(InputData inputData)
         {
-            var rotation = this._inputLook;
-            this._inputLook = Vector2.zero;
-            
-            return rotation;
+            NetLog.ServerLog(this,$"Moving Character : Forward ({inputData.MoveZ})");
+
+            _PlayerEntity.IsSprinting = inputData.Sprinting;
+
+            if(inputData.Jump)
+            {
+                _PlayerEntity.Jump();
+            }
+
+            _PlayerEntity.Move(new Vector3(inputData.MoveX, 0, inputData.MoveZ));
+            _PlayerEntity.Rotate(new Vector2(inputData.RotateAroundY, inputData.RotateAroundX));
         }
 
-        protected void Rotate(Vector2 rotationInput)
+        [Client]
+        private void RotateCamera(float rotation)
         {
-            this._PlayerEntity.Rotate (new Vector2(rotationInput.y, rotationInput.x));
-        }
-
-        protected void Move(Vector2 movementInput)
-        {
-            _PlayerEntity.Move (new Vector3(movementInput.x, 0, movementInput.y));
+            if(_PlayerEntity != null)
+            {
+                _PlayerEntity.RotateCamera(rotation);
+            }
         }
 
         /// <summary>
@@ -157,12 +171,18 @@ namespace WorkingTitle.Entities.Player
             _PlayerEntity = Instantiate(_DefaultPlayerEntity).GetComponent<PlayerEntity>();
             _PlayerEntity.PlayerControllerID = this.netId;
 
-            NetworkServer.Spawn(_PlayerEntity.gameObject, this.connectionToClient);
+            NetworkServer.Spawn(_PlayerEntity.gameObject);
         }
 
+        /// <summary>
+        /// Assign a player entity 
+        /// </summary>
+        /// <param name="playerEntity"></param>
         public void SetPlayerEntity(PlayerEntity playerEntity)
         {
             _PlayerEntity = playerEntity;
+
+            this.enabled = true;
         }
 
         #endregion
@@ -173,48 +193,117 @@ namespace WorkingTitle.Entities.Player
         ///     Handles the player look action event
         /// </summary>
         /// <param name="obj"></param>
-        private void Player_Look(InputAction.CallbackContext obj)
+        private void Player_PerformLook(InputAction.CallbackContext obj)
         {
-            this._inputLook = obj.ReadValue<Vector2>();
+            Vector2 lookInput = obj.ReadValue<Vector2>();
+
+            _FrameInputData.RotateAroundX = lookInput.x;
+            _FrameInputData.RotateAroundY = lookInput.y;
+        }
+
+        /// <summary>
+        ///     Handles the player look action event
+        /// </summary>
+        /// <param name="obj"></param>
+        private void Player_CancelLook(InputAction.CallbackContext obj)
+        {
+            _FrameInputData.RotateAroundX = 0;
+            _FrameInputData.RotateAroundY = 0;
+        }
+
+        private void Player_PerformMove(InputAction.CallbackContext obj)
+        {
+            Vector2 moveInput = obj.ReadValue<Vector2>();
+
+            _FrameInputData.MoveX = moveInput.x;
+            _FrameInputData.MoveZ = moveInput.y;
+        }
+
+        private void Player_CancelMove(InputAction.CallbackContext obj)
+        {
+            _FrameInputData.MoveX = 0;
+            _FrameInputData.MoveZ = 0;
         }
 
         /// <summary>
         ///     Handles the begin sprint action event
         /// </summary>
         /// <param name="obj"></param>
-        private void Player_BeginSprint(InputAction.CallbackContext obj)
+        private void Player_PerformSprint(InputAction.CallbackContext obj)
         {
-            this._PlayerEntity.IsSprinting = true;
+            _FrameInputData.Sprinting = true;
         }
 
         /// <summary>
         ///     Handles the end sprint action event
         /// </summary>
         /// <param name="obj"></param>
-        private void Player_EndSprint(InputAction.CallbackContext obj)
+        private void Player_CancelSprint(InputAction.CallbackContext obj)
         {
-            this._PlayerEntity.IsSprinting = false;
+            _FrameInputData.Sprinting = false;
         }
 
         /// <summary>
-        ///     Handles the player jump action event
+        ///     Handles the player start jump action event
         /// </summary>
         /// <param name="obj"></param>
-        private void Player_Jump(InputAction.CallbackContext obj)
+        private void Player_PerformJump(InputAction.CallbackContext obj)
         {
-            this._PlayerEntity.Jump();
+            _FrameInputData.Jump = true;
+        }
+
+        /// <summary>
+        ///     Handles the player end jump action event
+        /// </summary>
+        /// <param name="obj"></param>
+        private void Player_CancelJump(InputAction.CallbackContext obj)
+        {
+            _FrameInputData.Jump = false;
         }
 
         /// <summary>
         ///     Handles the player interact action event
         /// </summary>
         /// <param name="obj"></param>
-        private void Player_Interact(InputAction.CallbackContext obj)
+        private void Player_PerformInteract(InputAction.CallbackContext obj)
         {
-            this._PlayerEntity.Interact();
+            _FrameInputData.Interact = true;
+        }
+
+        /// <summary>
+        ///     Handles the player interact action event
+        /// </summary>
+        /// <param name="obj"></param>
+        private void Player_CancelInteract(InputAction.CallbackContext obj)
+        {
+            _FrameInputData.Interact = false;
+        }
+
+        /// <summary>
+        /// Holds input data recorded by the player controller for a specific update frame.
+        /// </summary>
+        protected struct InputData : IEquatable<InputData>
+        {
+            public float MoveX;
+            public float MoveZ;
+            public bool Jump;
+            public float RotateAroundY;
+            public float RotateAroundX;
+            public bool Interact;
+            public bool Sprinting;
+
+            public bool Equals(InputData other)
+            {
+                return other.MoveX != MoveX
+                    || other.MoveZ != MoveZ
+                    || other.Jump != Jump
+                    || other.MoveX != MoveX
+                    || other.MoveX != MoveX
+                    || other.MoveX != MoveX
+                    || other.MoveX != MoveX;
+            }
         }
 
         #endregion
     }
-
 }

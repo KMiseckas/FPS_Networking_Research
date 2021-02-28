@@ -14083,7 +14083,6 @@ MonoBehaviour:
   _sensitivityY: 5
   _groundDistanceCheck: 0.1
   _jumpForce: 2
-  PlayerControllerSceneID: 0
   _Camera: {fileID: 5331516339049659819}
 --- !u!143 &6451891411849496473
 CharacterController:
@@ -14133,8 +14132,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  clientAuthority: 1
-  excludeOwnerUpdate: 1
+  clientAuthority: 0
+  excludeOwnerUpdate: 0
   syncPosition: 1
   syncRotation: 1
   syncScale: 0

@@ -102094,7 +102094,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2915334136635451222, guid: 4c3f4f1dae3e8e44b9955bd22b15b46c, type: 3}
       propertyPath: m_RootOrder
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2915334136635451222, guid: 4c3f4f1dae3e8e44b9955bd22b15b46c, type: 3}
       propertyPath: m_LocalPosition.x
@@ -102149,13 +102149,17 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1777748089, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
+      propertyPath: port
+      value: 7777
+      objectReference: {fileID: 0}
     - target: {fileID: 7651068391869949080, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
       propertyPath: m_Name
       value: Network Manager
       objectReference: {fileID: 0}
     - target: {fileID: 7651068391869949081, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
       propertyPath: m_RootOrder
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7651068391869949081, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
       propertyPath: m_LocalPosition.x
