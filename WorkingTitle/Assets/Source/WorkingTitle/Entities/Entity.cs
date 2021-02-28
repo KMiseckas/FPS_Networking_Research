@@ -6,13 +6,6 @@ namespace WorkingTitle.Entities
     [RequireComponent(typeof(Animator))]
     public abstract class Entity : NetworkBehaviour
     {
-        #region Constants
-
-        private const float MIN_ROT_X = -60f;
-        private const float MAX_ROT_X = 60f;
-
-        #endregion
-
         #region Properties
 
         public bool IsSprinting
@@ -28,10 +21,10 @@ namespace WorkingTitle.Entities
         private Rigidbody _rigidbody;
         private CharacterController _characterController;
         private Animator _animator;
-        [SerializeField] private float _walkSpeed;
-        [SerializeField] private float _runSpeed;
-        [SerializeField] private float _sensitivityX;
-        [SerializeField] private float _sensitivityY;
+        [SerializeField] protected float _walkSpeed;
+        [SerializeField] protected float _runSpeed;
+        [SerializeField] protected float _sensitivityX;
+        [SerializeField] protected float _sensitivityY;
         protected Vector3 _inputMovement;
         protected Vector2 _inputRotation;
 
@@ -94,8 +87,8 @@ namespace WorkingTitle.Entities
         /// <param name="inputRotation"></param>
         public virtual void Rotate(Vector2 inputRotation)
         {
-            this._inputRotation.x += inputRotation.x * this._sensitivityX * 10 * Time.deltaTime;
-            this._inputRotation.x = Mathf.Clamp(this._inputRotation.x, MIN_ROT_X, MAX_ROT_X);
+            //this._inputRotation.x += inputRotation.x * this._sensitivityX * 10 * Time.deltaTime;
+            //this._inputRotation.x = Mathf.Clamp(this._inputRotation.x, MIN_ROT_X, MAX_ROT_X);
             this._inputRotation.y += inputRotation.y * this._sensitivityY * 10 * Time.deltaTime;
         }
 

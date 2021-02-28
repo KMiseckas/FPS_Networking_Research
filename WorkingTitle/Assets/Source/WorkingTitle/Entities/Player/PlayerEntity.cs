@@ -6,6 +6,13 @@ namespace WorkingTitle.Entities.Player
 {
     public class PlayerEntity : Entity
     {
+        #region Constants
+
+        private const float MIN_ROT_X = -60f;
+        private const float MAX_ROT_X = 60f;
+
+        #endregion
+
         #region Fields
 
         [SyncVar]
@@ -33,7 +40,6 @@ namespace WorkingTitle.Entities.Player
             {
                 if(networkIdentity.isLocalPlayer)
                 {
-                    enabled = true;
                     _Camera.SetActive(true);
 
                     networkIdentity.GetComponent<PlayerController>().SetPlayerEntity(this);
@@ -45,18 +51,18 @@ namespace WorkingTitle.Entities.Player
         {
             base.OnStartServer();
 
-            enabled = false;
+            this.enabled = true;
+
             _Camera.SetActive(false);
         }
 
-        protected override void RotateImpl()
+        [Client]
+        public void RotateCamera(float yRotation)
         {
-            if(_Camera != null)
-            {
-                _Camera.transform.localEulerAngles = new Vector3(-_inputRotation.x, 0, 0);
-            }
+            _inputRotation.x += yRotation * _sensitivityX * 10 * Time.deltaTime;
+            _inputRotation.x = Mathf.Clamp(_inputRotation.x, MIN_ROT_X, MAX_ROT_X);
 
-            base.RotateImpl();
+            _Camera.transform.localEulerAngles = new Vector3(-_inputRotation.x, 0, 0);
         }
 
         #endregion
