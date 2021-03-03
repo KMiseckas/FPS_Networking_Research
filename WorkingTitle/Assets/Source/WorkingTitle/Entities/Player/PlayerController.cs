@@ -20,7 +20,7 @@ namespace WorkingTitle.Entities.Player
         /// <summary>
         /// Entity that the controller sends recorded input to.
         /// </summary>
-        private PlayerEntity _PlayerEntity;
+        [SerializeField] private PlayerEntity _PlayerEntity;
 
         /// <summary>
         /// Instance that provides input messages.
@@ -76,6 +76,9 @@ namespace WorkingTitle.Entities.Player
 
             HookInput();
             CmdSpawnPlayerEntity();
+
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Confined;
         }
 
         public override void OnStartServer()
@@ -101,9 +104,11 @@ namespace WorkingTitle.Entities.Player
                     _FrameInputData.DeltaTime = Time.deltaTime;
                     _FrameInputData.ID = nextResultID;
 
-                    //ApplyInputToPlayerEntity(_FrameInputData);
+                    ApplyInputToPlayerEntity(_FrameInputData);
                     CmdSendInputDataToPlayerEntity(_FrameInputData);
                     AddToInputDataHistory(_FrameInputData);
+
+                    _PlayerEntity.UpdateEntity();
                 }
                 else if(isServer)
                 {
@@ -116,6 +121,8 @@ namespace WorkingTitle.Entities.Player
                         ApplyInputToPlayerEntity(nextInputData);
 
                         nextResultID = nextInputData.ID;
+
+                        _PlayerEntity.UpdateEntity();
                     }
 
                     _InputDataQueue.Clear();
@@ -134,6 +141,11 @@ namespace WorkingTitle.Entities.Player
                         TargetVerifyClientInputResults(resultData);
                     }
                 }
+            }
+
+            if(isLocalPlayer)
+            {
+                RotateCamera();
             }
         }
 
@@ -205,22 +217,17 @@ namespace WorkingTitle.Entities.Player
             _PlayerEntity.InputDeltaTime = inputData.DeltaTime;
             _PlayerEntity.IsSprinting = inputData.Sprinting;
 
-            _PlayerEntity.Move(new Vector3(inputData.MoveX, 0, inputData.MoveZ));
-            _PlayerEntity.Rotate(new Vector2(inputData.RotateAroundY, inputData.RotateAroundX));
+            _PlayerEntity.AddMovementInput(new Vector3(inputData.MoveX, 0, inputData.MoveZ));
+            _PlayerEntity.AddRotationInput(new Vector2(inputData.RotateAroundY, inputData.RotateAroundX));
 
             if(inputData.Jump)
             {
-                _PlayerEntity.Jump();
+                _PlayerEntity.AddJumpInput();
             }
 
             if(inputData.Interact)
             {
-                _PlayerEntity.Interact();
-            }
-
-            if(isLocalPlayer)
-            {
-                RotateCamera(inputData.RotateAroundY);
+                _PlayerEntity.AddInteractionInput();
             }
         }
 
@@ -271,7 +278,7 @@ namespace WorkingTitle.Entities.Player
                 if(!clientResultData.Equals(serverResultData))
                 {
                     //ApplyServerInputResults(serverResultData);
-                    ReplayInputData(serverResultData.ID);
+                    //ReplayInputData(serverResultData.ID);
 
                     Debug.LogWarning("Out Of Sync - Re-Syncing client data");
                 }
@@ -312,11 +319,11 @@ namespace WorkingTitle.Entities.Player
         }
 
         [Client]
-        private void RotateCamera(float rotation)
+        private void RotateCamera()
         {
             if(_PlayerEntity != null)
             {
-                _PlayerEntity.RotateCamera(rotation);
+                _PlayerEntity.RotateCamera();
             }
         }
 

@@ -10522,9 +10522,9 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.01
-  far clip plane: 500
-  field of view: 60
+  near clip plane: 0.02
+  far clip plane: 300
+  field of view: 81
   orthographic: 0
   orthographic size: 35
   m_Depth: -1
@@ -14076,12 +14076,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  _walkSpeed: 4
-  _runSpeed: 8
-  _sensitivityX: 5
-  _SensitivityY: 5
-  _groundDistanceCheck: 0.1
-  _jumpForce: 2
+  _WalkSpeed: 5
+  _RunSpeed: 10
+  _SpeedMultiplierBackwards: 0.5
+  _RotationSensitivityX: 20
+  _RotationSensitivityY: 20
+  _JumpForce: 1
   _Camera: {fileID: 5331516339049659819}
 --- !u!143 &6451891411849496473
 CharacterController:

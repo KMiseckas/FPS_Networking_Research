@@ -41,6 +41,7 @@ namespace WorkingTitle.Entities.Player
                 if(networkIdentity.isLocalPlayer)
                 {
                     _Camera.SetActive(true);
+                    this.gameObject.SetActive(true);
 
                     networkIdentity.GetComponent<PlayerController>().SetPlayerEntity(this);
                 }
@@ -57,12 +58,11 @@ namespace WorkingTitle.Entities.Player
         }
 
         [Client]
-        public void RotateCamera(float yRotation)
+        public void RotateCamera()
         {
-            _InputRotation.x += yRotation * _sensitivityX * 10 * InputDeltaTime;
             _InputRotation.x = Mathf.Clamp(_InputRotation.x, MIN_ROT_X, MAX_ROT_X);
 
-            _Camera.transform.localEulerAngles = new Vector3(-_InputRotation.x, 0, 0);
+            _Camera.transform.Rotate(Vector3.left, _InputRotation.x);
         }
 
         #endregion
