@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7651068391869949084}
   - component: {fileID: 7651068391869949087}
   - component: {fileID: 1777748089}
+  - component: {fileID: 2624044640680621653}
   m_Layer: 0
   m_Name: Network Manager
   m_TagString: Untagged
@@ -49,7 +50,7 @@ MonoBehaviour:
   runInBackground: 1
   autoStartServerBuild: 1
   showDebugMessages: 0
-  serverTickRate: 30
+  serverTickRate: 5
   serverBatching: 0
   serverBatchInterval: 0
   offlineScene: 
@@ -68,7 +69,7 @@ MonoBehaviour:
   - {fileID: 4742915436281619812, guid: 8135bdc2b652b8147a00170d2ea3b802, type: 3}
   - {fileID: 1874456743026115076, guid: 4639ef14872ac894990efb008da45a12, type: 3}
   - {fileID: 773065875710732622, guid: 51f5b21bd3d1891499ae9a63f22863c4, type: 3}
-  - {fileID: 0}
+  - {fileID: 6769380712087042894, guid: 9a470b90b43143c49aa803a662885e5a, type: 3}
 --- !u!114 &7651068391869949087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -108,3 +109,21 @@ MonoBehaviour:
   clientMaxReceivesPerTick: 1000
   clientSendQueueLimit: 10000
   clientReceiveQueueLimit: 10000
+--- !u!114 &2624044640680621653
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7651068391869949080}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc654f29862fc2643b948f772ebb9e68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showPing: 1
+  showRoundTripTime: 1
+  position: {x: 200, y: 0}
+  fontSize: 24
+  textColor: {r: 1, g: 1, b: 1, a: 0.3137255}
+  format: '{0}ms'

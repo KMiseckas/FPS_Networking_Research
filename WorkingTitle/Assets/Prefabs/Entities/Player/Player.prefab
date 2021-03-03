@@ -14005,7 +14005,6 @@ GameObject:
   - component: {fileID: 3924489633342303108}
   - component: {fileID: 6451891411849496473}
   - component: {fileID: 3958291499068292727}
-  - component: {fileID: 5404633068564484663}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -14080,7 +14079,7 @@ MonoBehaviour:
   _walkSpeed: 4
   _runSpeed: 8
   _sensitivityX: 5
-  _sensitivityY: 5
+  _SensitivityY: 5
   _groundDistanceCheck: 0.1
   _jumpForce: 2
   _Camera: {fileID: 5331516339049659819}
@@ -14118,46 +14117,6 @@ MonoBehaviour:
   serverOnly: 0
   m_AssetId: 
   hasSpawned: 0
---- !u!114 &5404633068564484663
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6769380712087042894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 741bbe11f5357b44593b15c0d11b16bd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  syncMode: 0
-  syncInterval: 0.1
-  clientAuthority: 0
-  excludeOwnerUpdate: 0
-  syncPosition: 1
-  syncRotation: 1
-  syncScale: 0
-  interpolatePosition: 1
-  interpolateRotation: 1
-  interpolateScale: 0
-  localPositionSensitivity: 0.01
-  localRotationSensitivity: 0.01
-  localScaleSensitivity: 0.01
-  lastPosition: {x: 0, y: 0, z: 0}
-  lastRotation: {x: 0, y: 0, z: 0, w: 0}
-  lastScale: {x: 0, y: 0, z: 0}
-  start:
-    timeStamp: 0
-    localPosition: {x: 0, y: 0, z: 0}
-    localRotation: {x: 0, y: 0, z: 0, w: 0}
-    localScale: {x: 0, y: 0, z: 0}
-    movementSpeed: 0
-  goal:
-    timeStamp: 0
-    localPosition: {x: 0, y: 0, z: 0}
-    localRotation: {x: 0, y: 0, z: 0, w: 0}
-    localScale: {x: 0, y: 0, z: 0}
-    movementSpeed: 0
 --- !u!1 &6776882438127451750
 GameObject:
   m_ObjectHideFlags: 0

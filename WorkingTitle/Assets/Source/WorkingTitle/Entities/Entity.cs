@@ -6,16 +6,6 @@ namespace WorkingTitle.Entities
     [RequireComponent(typeof(Animator))]
     public abstract class Entity : NetworkBehaviour
     {
-        #region Properties
-
-        public bool IsSprinting
-        {
-            get => this._isSprinting && this._inputMovement.x == 0 && this._inputMovement.z > 0;
-            set => this._isSprinting = value;
-        }
-
-        #endregion
-
         #region Fields
 
         private Rigidbody _rigidbody;
@@ -24,12 +14,12 @@ namespace WorkingTitle.Entities
         [SerializeField] protected float _walkSpeed;
         [SerializeField] protected float _runSpeed;
         [SerializeField] protected float _sensitivityX;
-        [SerializeField] protected float _sensitivityY;
-        protected Vector3 _inputMovement;
-        protected Vector2 _inputRotation;
+        [SerializeField] protected float _SensitivityY;
+        protected Vector3 _InputMovement;
+        protected Vector2 _InputRotation;
 
         [SerializeField] private float _groundDistanceCheck = 0.01f; //For physics controller
-        private Vector3 _lastGroundedMovement;
+        private Vector3 _LastGroundedMovement;
         private float _lastGroundedSpeed;
         private Vector3 _lastGroundedDirection;
         private bool _lastIsGroundedCheck;
@@ -38,8 +28,21 @@ namespace WorkingTitle.Entities
         private Vector3 _jumpVelocity;
 
         private bool _isSprinting;
-        private bool _isGrounded;
+        private bool _IsGrounded;
         private bool _isJumping;
+
+        internal float _InputDeltaTime;
+
+        #endregion
+
+        #region Properties
+
+        public bool IsSprinting
+        {
+            get => this._isSprinting && this._InputMovement.x == 0 && this._InputMovement.z > 0;
+            set => this._isSprinting = value;
+        }
+        public float InputDeltaTime { get => _InputDeltaTime; set => _InputDeltaTime=value; }
 
         #endregion
 
@@ -54,18 +57,12 @@ namespace WorkingTitle.Entities
 
         protected virtual void Update()
         {
-            this.UpdateGroundedStatus();
-            this.RotateImpl();
-
-#if UNITY_PLAYER_PHYSICS
-            this.MovePhysImpl();
-#else
-            this.MoveImpl();
-#endif
-
+            UpdateGroundedStatus();
+            RotateImpl();
+            MoveImpl();
         }
 
-#endregion
+        #endregion
 
         #region Functions
 
@@ -75,10 +72,14 @@ namespace WorkingTitle.Entities
         /// <param name="inputMovement"></param>
         public virtual void Move(Vector3 inputMovement)
         {
-            if(this._isGrounded)
-                this._lastGroundedMovement = this._inputMovement;
+            Debug.Assert(isLocalPlayer);
+
+            if(_IsGrounded)
+            {
+                _LastGroundedMovement = _InputMovement;
+            }
             
-            this._inputMovement = inputMovement;
+            _InputMovement = inputMovement;
         }
 
         /// <summary>
@@ -87,9 +88,7 @@ namespace WorkingTitle.Entities
         /// <param name="inputRotation"></param>
         public virtual void Rotate(Vector2 inputRotation)
         {
-            //this._inputRotation.x += inputRotation.x * this._sensitivityX * 10 * Time.deltaTime;
-            //this._inputRotation.x = Mathf.Clamp(this._inputRotation.x, MIN_ROT_X, MAX_ROT_X);
-            this._inputRotation.y += inputRotation.y * this._sensitivityY * 10 * Time.deltaTime;
+            _InputRotation.y += inputRotation.y * this._SensitivityY * 10 * InputDeltaTime;
         }
 
         /// <summary>
@@ -111,7 +110,7 @@ namespace WorkingTitle.Entities
         /// <summary>
         ///     Checks if the player can jump
         /// </summary>
-        protected virtual bool CanJump() => this._isGrounded && !this._isJumping;
+        protected virtual bool CanJump() => this._IsGrounded && !this._isJumping;
 
         /// <summary>
         ///     Player jump implementation
@@ -119,26 +118,21 @@ namespace WorkingTitle.Entities
         protected virtual void JumpImpl()
         {
             this._isJumping = true;
-            this._isGrounded = false;
-
-#if UNITY_PLAYER_PHYSICS
-            this._rigidbody.AddForce(Vector3.up * 300);
-#else
+            this._IsGrounded = false;
             this._jumpVelocity = Vector3.up * this._jumpForce * 2;
-#endif
         }
 
         /// <summary>
         ///     Gets the movement input vector to use for movement
         /// </summary>
-        private Vector3 GetMovementInput() => this._isGrounded ? this._inputMovement : this._lastGroundedMovement;
+        private Vector3 GetMovementInput() => this._IsGrounded ? this._InputMovement : this._LastGroundedMovement;
 
         /// <summary>
         ///     Calculates the players movement speed
         /// </summary>
         private float CalculateMovementSpeed()
         {
-            if (!this._isGrounded)
+            if (!this._IsGrounded)
                 return this._lastGroundedSpeed;
 
             var movement = this.GetMovementInput();
@@ -158,7 +152,7 @@ namespace WorkingTitle.Entities
         /// <param name="movement"></param>
         private Vector3 CalculateMovementDirection(Vector3 movement)
         {
-            if (!this._isGrounded)
+            if (!this._IsGrounded)
                 return this._lastGroundedDirection;
 
             var direction = this.transform.forward * movement.z + this.transform.right * movement.x;
@@ -175,7 +169,7 @@ namespace WorkingTitle.Entities
             var speed = this.CalculateMovementSpeed();
             var direction = this.CalculateMovementDirection(movement);
 
-            if (this._isGrounded)
+            if (this._IsGrounded)
             {
                 this._lastGroundedSpeed = speed;
                 this._lastGroundedDirection = direction;
@@ -183,7 +177,7 @@ namespace WorkingTitle.Entities
 
             this.SetMovementAnimatorParams();
 
-            var velocity = direction * speed;
+            var velocity = direction * speed * InputDeltaTime;
             this._velocity.x = velocity.x;
             this._velocity.z = velocity.z;
 
@@ -195,33 +189,12 @@ namespace WorkingTitle.Entities
                 this._jumpVelocity = Vector3.zero;
             }
 
-            if(!this._isGrounded)
+            if(!this._IsGrounded)
             {
-                this._velocity.y += Physics.gravity.y * Time.deltaTime;
+                this._velocity.y += Physics.gravity.y * InputDeltaTime;
             }
             
-            this._characterController.Move(this._velocity * Time.deltaTime);
-        }
-
-        /// <summary>
-        ///     Movement implementation using physics
-        /// </summary>
-        private void MovePhysImpl()
-        {
-            var movement = this.GetMovementInput();
-            var speed = this.CalculateMovementSpeed();
-            var direction = this.CalculateMovementDirection(movement);
-
-            if (this._isGrounded)
-            {
-                this._lastGroundedSpeed = speed;
-                this._lastGroundedDirection = direction;
-            }
-
-            this.SetMovementAnimatorParams();
-
-            var position = this._rigidbody.position + direction * speed * Time.deltaTime;
-            this._rigidbody.MovePosition(position);
+            this._characterController.Move(this._velocity);
         }
 
         /// <summary>
@@ -229,7 +202,7 @@ namespace WorkingTitle.Entities
         /// </summary>
         protected virtual void RotateImpl()
         {
-            this.transform.localEulerAngles = new Vector3(0, this._inputRotation.y, 0);
+            transform.localEulerAngles = new Vector3(0, _InputRotation.y, 0);
         }
 
         /// <summary>
@@ -239,28 +212,28 @@ namespace WorkingTitle.Entities
         {
             var animMovement = new Vector2()
             {
-                x = _inputMovement.x,
-                y = _inputMovement.z
+                x = _InputMovement.x,
+                y = _InputMovement.z
             };
 
             if (this.IsSprinting)
                 animMovement.y = 2;
-            else if (this._inputMovement.z < 0)
+            else if (this._InputMovement.z < 0)
             {
                 animMovement.y = -1;
                 animMovement.x = -animMovement.x;
             }
                 
-            if (this._isGrounded && animMovement != Vector2.zero)
+            if (this._IsGrounded && animMovement != Vector2.zero)
             {
-                this._animator.SetFloat("Horizontal", animMovement.x, 0.1f, Time.deltaTime);
-                this._animator.SetFloat("Vertical", animMovement.y, 0.1f, Time.deltaTime);
+                this._animator.SetFloat("Horizontal", animMovement.x, 0.1f, InputDeltaTime);
+                this._animator.SetFloat("Vertical", animMovement.y, 0.1f, InputDeltaTime);
                 this._animator.SetFloat("WalkSpeed", this._isSprinting ? 1f : 1.5f);
             }
             else
             {
-                this._animator.SetFloat("Horizontal", 0, 0.1f, Time.deltaTime);
-                this._animator.SetFloat("Vertical", 0, 0.1f, Time.deltaTime);
+                this._animator.SetFloat("Horizontal", 0, 0.1f, InputDeltaTime);
+                this._animator.SetFloat("Vertical", 0, 0.1f, InputDeltaTime);
                 this._animator.SetFloat("WalkSpeed", 0);
             }
         }
@@ -280,13 +253,13 @@ namespace WorkingTitle.Entities
                 if(this._lastIsGroundedCheck && !isGrounded)
                 {
                     this._lastIsGroundedCheck = false;
-                    this._isGrounded = false;
+                    this._IsGrounded = false;
                     this._isJumping = false;
                 }
             }
             else
             {
-                this._isGrounded = isGrounded;
+                this._IsGrounded = isGrounded;
                 this._lastIsGroundedCheck = isGrounded;
             }
         }

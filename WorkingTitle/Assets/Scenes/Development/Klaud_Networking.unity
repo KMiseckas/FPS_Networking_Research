@@ -102149,10 +102149,6 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1777748089, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
-      propertyPath: port
-      value: 7777
-      objectReference: {fileID: 0}
     - target: {fileID: 7651068391869949080, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
       propertyPath: m_Name
       value: Network Manager
@@ -102202,12 +102198,12 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7651068391869949084, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
-      propertyPath: spawnPrefabs.Array.size
+      propertyPath: serverTickRate
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 7651068391869949084, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
-      propertyPath: spawnPrefabs.Array.data[4]
-      value: 
-      objectReference: {fileID: 6769380712087042894, guid: 9a470b90b43143c49aa803a662885e5a, type: 3}
+      propertyPath: showDebugMessages
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 43be9a87d120e52428d7d181ea739967, type: 3}
