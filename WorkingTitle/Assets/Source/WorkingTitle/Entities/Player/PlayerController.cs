@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using WorkingTitle.Input;
 using Mirror;
 using System.Collections.Generic;
+using UnityEngine.Assertions;
 
 namespace WorkingTitle.Entities.Player
 {
@@ -11,6 +12,11 @@ namespace WorkingTitle.Entities.Player
     public partial class PlayerController : NetworkBehaviour
     {
         #region Fields
+
+        /// <summary>
+        /// The max amount of the input and result history to store.
+        /// </summary>
+        private const int MAX_HISTORY_SIZE = 1000;
 
         /// <summary>
         /// The prefab of the player entity to spawn.
@@ -174,12 +180,13 @@ namespace WorkingTitle.Entities.Player
         /// <param name="actionName"></param>
         private InputAction GetAction(string actionMapName, string actionName)
         {
-            if (this._Input == null)
+            if (_Input == null)
             {
-                this._Input = this.GetComponent<PlayerInput>();
+                _Input = GetComponent<PlayerInput>();
             }
 
-            var actionMap = this._Input.actions.FindActionMap(actionMapName, true);
+            InputActionMap actionMap = _Input.actions.FindActionMap(actionMapName, true);
+
             return actionMap.FindAction(actionName, true);
         }
 
@@ -251,6 +258,11 @@ namespace WorkingTitle.Entities.Player
         private void AddToInputResultDataHistory(InputResultData inputResultData)
         {
             _InputResultDataHistory.Add(inputResultData.ID, inputResultData);
+
+            if(_InputResultDataHistory.Count >= MAX_HISTORY_SIZE)
+            {
+                _InputResultDataHistory.Remove(_LastClearedID + 1);
+            }
         }
 
         private InputResultData RecordInputResults(uint resultID)
@@ -285,11 +297,8 @@ namespace WorkingTitle.Entities.Player
 
                 ClearResultsUptoID(serverResultData.ID);
             }
-            else
-            {
-                Debug.LogWarning($"Input Result Data [#{serverResultData.ID}] out of Sync! Something went wrong! The data stored in the client, with a specific `ID`, cannot be found.");
-            }
 
+            Assert.IsTrue(foundResult, $"Input Result Data [#{serverResultData.ID}] out of Sync! Something went wrong! The data stored in the client, with a specific `ID`, cannot be found.");
         }
 
         [Client]
@@ -309,7 +318,7 @@ namespace WorkingTitle.Entities.Player
         [Client]
         private void ClearResultsUptoID(uint id)
         {
-            for(uint i = _LastClearedID; i <= id; i++)
+            for(uint i = _LastClearedID + 1; i <= id; i++)
             {
                 _InputDataHistory.Remove(i);
                 _InputResultDataHistory.Remove(i);
