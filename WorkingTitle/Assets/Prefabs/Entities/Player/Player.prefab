@@ -14077,11 +14077,12 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0.1
   _WalkSpeed: 5
-  _RunSpeed: 10
+  _RunSpeed: 7
   _SpeedMultiplierBackwards: 0.5
   _RotationSensitivityX: 20
   _RotationSensitivityY: 20
-  _JumpForce: 1
+  _JumpForce: 0.8
+  _Gravity: -18
   _Camera: {fileID: 5331516339049659819}
 --- !u!143 &6451891411849496473
 CharacterController:
@@ -14115,7 +14116,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sceneId: 0
   serverOnly: 0
-  m_AssetId: 
+  m_AssetId: 9a470b90b43143c49aa803a662885e5a
   hasSpawned: 0
 --- !u!1 &6776882438127451750
 GameObject:

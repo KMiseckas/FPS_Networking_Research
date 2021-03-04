@@ -24,6 +24,7 @@ namespace WorkingTitle.Entities
         [SerializeField] protected float _RotationSensitivityX;
         [SerializeField] protected float _RotationSensitivityY;
         [SerializeField] private float _JumpForce;
+        [SerializeField] private float _Gravity = -15;
 
         /// <summary>
         /// Input for the X, Y and Z axis movement.
@@ -39,14 +40,17 @@ namespace WorkingTitle.Entities
         private float _LastGroundedSpeed;
         private Vector3 _LastGroundedDirection;
         private bool _LastIsGroundedCheck;
-        private Vector3 _Velocity;
         private Vector3 _JumpVelocity;
 
         private bool _IsSprinting;
         private bool _IsGrounded;
         private bool _IsJumping;
 
+        private bool _JumpPressed;
+
         private float _InputDeltaTime;
+
+        private Vector3 _GravityMovementVelocity;
 
         #endregion
 
@@ -130,8 +134,7 @@ namespace WorkingTitle.Entities
         protected virtual void Jump()
         {
             _IsJumping = true;
-            _IsGrounded = false;
-            _JumpVelocity = Vector3.up * _JumpForce;
+            _JumpPressed = true;
         }
 
         public virtual void AddInteractionInput()
@@ -175,15 +178,15 @@ namespace WorkingTitle.Entities
         /// <summary>
         ///     Calculates the players movement direction
         /// </summary>
-        /// <param name="movement"></param>
-        private Vector3 CalculateMovementDirection(Vector3 movement)
+        /// <param name="movementInput"></param>
+        private Vector3 CalculateMovementDirection(Vector3 movementInput)
         {
             if(!_IsGrounded)
             {
                 return _LastGroundedDirection;
             }
 
-            var direction = this.transform.forward * movement.z + this.transform.right * movement.x;
+            Vector3 direction = this.transform.forward * movementInput.z + this.transform.right * movementInput.x;
             direction.Normalize();
 
             return direction;
@@ -194,36 +197,34 @@ namespace WorkingTitle.Entities
         /// </summary>
         protected virtual void Move()
         {
-            Vector3 movement = GetMovementInput();
+            Vector3 movementInput = GetMovementInput();
             float speed = CalculateMovementSpeed();
-            Vector3 direction = CalculateMovementDirection(movement);
+            Vector3 direction = CalculateMovementDirection(movementInput);
 
-            if (_IsGrounded)
+            if (_IsGrounded && _GravityMovementVelocity.y < 0)
             {
+                _GravityMovementVelocity.y = -1f;
+
                 _LastGroundedSpeed = speed;
                 _LastGroundedDirection = direction;
             }
 
             SetMovementAnimatorParams();
 
-            Vector3 velocity = direction * speed * InputDeltaTime;
-            _Velocity.x = velocity.x;
-            _Velocity.z = velocity.z;
+            Vector3 movementVelocity = direction * speed * InputDeltaTime;
 
-            // Changes the height position of the player.
-            if (_JumpVelocity != Vector3.zero)
+            _CharacterControllerComponent.Move(movementVelocity);
+
+            if(_JumpPressed && _IsGrounded)
             {
-                _Velocity.y = 0;
-                _Velocity += _JumpVelocity;
-                _JumpVelocity = Vector3.zero;
+                _GravityMovementVelocity.y = Mathf.Sqrt(_JumpForce * -2f * _Gravity);
             }
 
-            if(!_IsGrounded)
-            {
-                _Velocity.y += Physics.gravity.y * InputDeltaTime;
-            }
-            
-            _CharacterControllerComponent.Move(_Velocity);
+            _GravityMovementVelocity.y += _Gravity * InputDeltaTime;
+
+            _CharacterControllerComponent.Move(_GravityMovementVelocity * InputDeltaTime);
+
+            _JumpPressed = false;
         }
 
         /// <summary>
