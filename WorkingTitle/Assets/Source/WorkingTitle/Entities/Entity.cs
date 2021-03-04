@@ -40,7 +40,6 @@ namespace WorkingTitle.Entities
         private float _LastGroundedSpeed;
         private Vector3 _LastGroundedDirection;
         private bool _LastIsGroundedCheck;
-        private Vector3 _JumpVelocity;
 
         private bool _IsSprinting;
         private bool _IsGrounded;

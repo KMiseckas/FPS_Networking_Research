@@ -277,8 +277,8 @@ namespace WorkingTitle.Entities.Player
             {
                 if(!clientResultData.Equals(serverResultData))
                 {
-                    //ApplyServerInputResults(serverResultData);
-                    //ReplayInputData(serverResultData.ID);
+                    ApplyServerInputResults(serverResultData);
+                    ReplayInputData(serverResultData.ID);
 
                     Debug.LogWarning("Out Of Sync - Re-Syncing client data");
                 }

@@ -49,8 +49,8 @@ MonoBehaviour:
   dontDestroyOnLoad: 1
   runInBackground: 1
   autoStartServerBuild: 1
-  showDebugMessages: 0
-  serverTickRate: 5
+  showDebugMessages: 1
+  serverTickRate: 30
   serverBatching: 0
   serverBatchInterval: 0
   offlineScene: 

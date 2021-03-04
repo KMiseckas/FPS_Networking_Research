@@ -14116,7 +14116,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sceneId: 0
   serverOnly: 0
-  m_AssetId: 9a470b90b43143c49aa803a662885e5a
+  m_AssetId: 
   hasSpawned: 0
 --- !u!1 &6776882438127451750
 GameObject:
