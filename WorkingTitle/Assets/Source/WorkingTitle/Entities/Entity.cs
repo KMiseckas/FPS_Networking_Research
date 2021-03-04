@@ -6,40 +6,62 @@ namespace WorkingTitle.Entities
     [RequireComponent(typeof(Animator))]
     public abstract class Entity : NetworkBehaviour
     {
+        #region Fields
+
+        /// <summary>
+        /// Component of `Character Controller` which handles player movement and collision logic.
+        /// </summary>
+        private CharacterController _CharacterControllerComponent;
+
+        /// <summary>
+        /// Component of `Animator` which handles the entity animations during movement, etc.
+        /// </summary>
+        private Animator _AnimatorComponent;
+
+        [SerializeField] protected float _WalkSpeed;
+        [SerializeField] protected float _RunSpeed;
+        [SerializeField] protected float _SpeedMultiplierBackwards = 0.5f;
+        [SerializeField] protected float _RotationSensitivityX;
+        [SerializeField] protected float _RotationSensitivityY;
+        [SerializeField] private float _JumpForce;
+        [SerializeField] private float _Gravity = -15;
+
+        /// <summary>
+        /// Input for the X, Y and Z axis movement.
+        /// </summary>
+        protected Vector3 _InputMovement;
+
+        /// <summary>
+        /// Input for the entity rotation.
+        /// </summary>
+        protected Vector2 _InputRotation;
+
+        private Vector3 _LastGroundedMovement;
+        private float _LastGroundedSpeed;
+        private Vector3 _LastGroundedDirection;
+        private bool _LastIsGroundedCheck;
+
+        private bool _IsSprinting;
+        private bool _IsGrounded;
+        private bool _IsJumping;
+
+        private bool _JumpPressed;
+
+        private float _InputDeltaTime;
+
+        private Vector3 _GravityMovementVelocity;
+
+        #endregion
+
         #region Properties
 
         public bool IsSprinting
         {
-            get => this._isSprinting && this._inputMovement.x == 0 && this._inputMovement.z > 0;
-            set => this._isSprinting = value;
+            get => _IsSprinting && _InputMovement.x == 0 && _InputMovement.z > 0;
+            set => _IsSprinting = value;
         }
 
-        #endregion
-
-        #region Fields
-
-        private Rigidbody _rigidbody;
-        private CharacterController _characterController;
-        private Animator _animator;
-        [SerializeField] protected float _walkSpeed;
-        [SerializeField] protected float _runSpeed;
-        [SerializeField] protected float _sensitivityX;
-        [SerializeField] protected float _sensitivityY;
-        protected Vector3 _inputMovement;
-        protected Vector2 _inputRotation;
-
-        [SerializeField] private float _groundDistanceCheck = 0.01f; //For physics controller
-        private Vector3 _lastGroundedMovement;
-        private float _lastGroundedSpeed;
-        private Vector3 _lastGroundedDirection;
-        private bool _lastIsGroundedCheck;
-        [SerializeField] private float _jumpForce;
-        private Vector3 _velocity;
-        private Vector3 _jumpVelocity;
-
-        private bool _isSprinting;
-        private bool _isGrounded;
-        private bool _isJumping;
+        public float InputDeltaTime { get => _InputDeltaTime; set => _InputDeltaTime=value; }
 
         #endregion
 
@@ -47,107 +69,107 @@ namespace WorkingTitle.Entities
 
         protected virtual void Awake()
         {
-            this._rigidbody = this.GetComponent<Rigidbody>();
-            this._characterController = this.GetComponent<CharacterController>();
-            this._animator = this.GetComponent<Animator>();
+            _CharacterControllerComponent = GetComponent<CharacterController>();
+            _AnimatorComponent = GetComponent<Animator>();
         }
 
-        protected virtual void Update()
-        {
-            this.UpdateGroundedStatus();
-            this.RotateImpl();
-
-#if UNITY_PLAYER_PHYSICS
-            this.MovePhysImpl();
-#else
-            this.MoveImpl();
-#endif
-
-        }
-
-#endregion
+        #endregion
 
         #region Functions
+
+        public virtual void UpdateEntity()
+        {
+            UpdateGroundedStatus();
+            Rotate();
+            Move();
+        }
 
         /// <summary>
         ///     Applies input to later move the player
         /// </summary>
         /// <param name="inputMovement"></param>
-        public virtual void Move(Vector3 inputMovement)
+        public virtual void AddMovementInput(Vector3 inputMovement)
         {
-            if(this._isGrounded)
-                this._lastGroundedMovement = this._inputMovement;
+            if(_IsGrounded)
+            {
+                _LastGroundedMovement = _InputMovement;
+            }
             
-            this._inputMovement = inputMovement;
+            _InputMovement = inputMovement;
         }
 
         /// <summary>
         ///     Applies input to later rotate the player
         /// </summary>
         /// <param name="inputRotation"></param>
-        public virtual void Rotate(Vector2 inputRotation)
+        public virtual void AddRotationInput(Vector2 inputRotation)
         {
-            //this._inputRotation.x += inputRotation.x * this._sensitivityX * 10 * Time.deltaTime;
-            //this._inputRotation.x = Mathf.Clamp(this._inputRotation.x, MIN_ROT_X, MAX_ROT_X);
-            this._inputRotation.y += inputRotation.y * this._sensitivityY * 10 * Time.deltaTime;
+            _InputRotation.y = inputRotation.y * _RotationSensitivityY * InputDeltaTime;
+            _InputRotation.x = inputRotation.x * _RotationSensitivityX * InputDeltaTime;
         }
 
         /// <summary>
         ///     Makes the player jump
         /// </summary>
-        public virtual void Jump()
+        public virtual void AddJumpInput()
         {
-            if(this.CanJump())
+            if(CanJump())
             {
-                this.JumpImpl();
+                Jump();
             }
-        }
-
-        public virtual void Interact()
-        {
-
         }
         
         /// <summary>
         ///     Checks if the player can jump
         /// </summary>
-        protected virtual bool CanJump() => this._isGrounded && !this._isJumping;
+        protected virtual bool CanJump()
+        {
+            return _IsGrounded && !_IsJumping;
+        }
 
         /// <summary>
         ///     Player jump implementation
         /// </summary>
-        protected virtual void JumpImpl()
+        protected virtual void Jump()
         {
-            this._isJumping = true;
-            this._isGrounded = false;
+            _IsJumping = true;
+            _JumpPressed = true;
+        }
 
-#if UNITY_PLAYER_PHYSICS
-            this._rigidbody.AddForce(Vector3.up * 300);
-#else
-            this._jumpVelocity = Vector3.up * this._jumpForce * 2;
-#endif
+        public virtual void AddInteractionInput()
+        {
+
         }
 
         /// <summary>
         ///     Gets the movement input vector to use for movement
         /// </summary>
-        private Vector3 GetMovementInput() => this._isGrounded ? this._inputMovement : this._lastGroundedMovement;
+        private Vector3 GetMovementInput()
+        {
+            return _IsGrounded ? _InputMovement : _LastGroundedMovement;
+        }
 
         /// <summary>
         ///     Calculates the players movement speed
         /// </summary>
         private float CalculateMovementSpeed()
         {
-            if (!this._isGrounded)
-                return this._lastGroundedSpeed;
+            if (!_IsGrounded)
+            {
+                return _LastGroundedSpeed;
+            }
 
-            var movement = this.GetMovementInput();
-            var speed = this._walkSpeed;
+            Vector3 movement = GetMovementInput();
+            float speed = _WalkSpeed;
 
-            if (this.IsSprinting)
-                speed = this._runSpeed;
+            if (IsSprinting)
+            {
+                speed = _RunSpeed;
+            }
             else if (movement.z < 0)
-                speed *= .5f;
+            {
+                speed *= _SpeedMultiplierBackwards;
+            }
 
             return speed;
         }
@@ -155,81 +177,61 @@ namespace WorkingTitle.Entities
         /// <summary>
         ///     Calculates the players movement direction
         /// </summary>
-        /// <param name="movement"></param>
-        private Vector3 CalculateMovementDirection(Vector3 movement)
+        /// <param name="movementInput"></param>
+        private Vector3 CalculateMovementDirection(Vector3 movementInput)
         {
-            if (!this._isGrounded)
-                return this._lastGroundedDirection;
+            if(!_IsGrounded)
+            {
+                return _LastGroundedDirection;
+            }
 
-            var direction = this.transform.forward * movement.z + this.transform.right * movement.x;
+            Vector3 direction = this.transform.forward * movementInput.z + this.transform.right * movementInput.x;
             direction.Normalize();
+
             return direction;
         }
 
         /// <summary>
         ///     Movement implementation
         /// </summary>
-        protected virtual void MoveImpl()
+        protected virtual void Move()
         {
-            var movement = this.GetMovementInput();
-            var speed = this.CalculateMovementSpeed();
-            var direction = this.CalculateMovementDirection(movement);
+            Vector3 movementInput = GetMovementInput();
+            float speed = CalculateMovementSpeed();
+            Vector3 direction = CalculateMovementDirection(movementInput);
 
-            if (this._isGrounded)
+            if (_IsGrounded && _GravityMovementVelocity.y < 0)
             {
-                this._lastGroundedSpeed = speed;
-                this._lastGroundedDirection = direction;
+                _GravityMovementVelocity.y = -1f;
+
+                _LastGroundedSpeed = speed;
+                _LastGroundedDirection = direction;
             }
 
-            this.SetMovementAnimatorParams();
+            SetMovementAnimatorParams();
 
-            var velocity = direction * speed;
-            this._velocity.x = velocity.x;
-            this._velocity.z = velocity.z;
+            Vector3 movementVelocity = direction * speed * InputDeltaTime;
 
-            // Changes the height position of the player..
-            if (this._jumpVelocity != Vector3.zero)
+            _CharacterControllerComponent.Move(movementVelocity);
+
+            if(_JumpPressed && _IsGrounded)
             {
-                this._velocity.y = 0;
-                this._velocity += this._jumpVelocity;
-                this._jumpVelocity = Vector3.zero;
+                _GravityMovementVelocity.y = Mathf.Sqrt(_JumpForce * -2f * _Gravity);
             }
 
-            if(!this._isGrounded)
-            {
-                this._velocity.y += Physics.gravity.y * Time.deltaTime;
-            }
-            
-            this._characterController.Move(this._velocity * Time.deltaTime);
-        }
+            _GravityMovementVelocity.y += _Gravity * InputDeltaTime;
 
-        /// <summary>
-        ///     Movement implementation using physics
-        /// </summary>
-        private void MovePhysImpl()
-        {
-            var movement = this.GetMovementInput();
-            var speed = this.CalculateMovementSpeed();
-            var direction = this.CalculateMovementDirection(movement);
+            _CharacterControllerComponent.Move(_GravityMovementVelocity * InputDeltaTime);
 
-            if (this._isGrounded)
-            {
-                this._lastGroundedSpeed = speed;
-                this._lastGroundedDirection = direction;
-            }
-
-            this.SetMovementAnimatorParams();
-
-            var position = this._rigidbody.position + direction * speed * Time.deltaTime;
-            this._rigidbody.MovePosition(position);
+            _JumpPressed = false;
         }
 
         /// <summary>
         ///     Rotate implementation
         /// </summary>
-        protected virtual void RotateImpl()
+        protected virtual void Rotate()
         {
-            this.transform.localEulerAngles = new Vector3(0, this._inputRotation.y, 0);
+            this.transform.Rotate(Vector3.up, _InputRotation.y);
         }
 
         /// <summary>
@@ -237,31 +239,33 @@ namespace WorkingTitle.Entities
         /// </summary>
         private void SetMovementAnimatorParams()
         {
-            var animMovement = new Vector2()
+            Vector2 animMovement = new Vector2()
             {
-                x = _inputMovement.x,
-                y = _inputMovement.z
+                x = _InputMovement.x,
+                y = _InputMovement.z
             };
 
-            if (this.IsSprinting)
+            if (IsSprinting)
+            {
                 animMovement.y = 2;
-            else if (this._inputMovement.z < 0)
+            }
+            else if (_InputMovement.z < 0)
             {
                 animMovement.y = -1;
                 animMovement.x = -animMovement.x;
             }
                 
-            if (this._isGrounded && animMovement != Vector2.zero)
+            if (_IsGrounded && animMovement != Vector2.zero)
             {
-                this._animator.SetFloat("Horizontal", animMovement.x, 0.1f, Time.deltaTime);
-                this._animator.SetFloat("Vertical", animMovement.y, 0.1f, Time.deltaTime);
-                this._animator.SetFloat("WalkSpeed", this._isSprinting ? 1f : 1.5f);
+                _AnimatorComponent.SetFloat("Horizontal", animMovement.x, 0.1f, InputDeltaTime);
+                _AnimatorComponent.SetFloat("Vertical", animMovement.y, 0.1f, InputDeltaTime);
+                _AnimatorComponent.SetFloat("WalkSpeed", IsSprinting ? 1f : 1.5f);
             }
             else
             {
-                this._animator.SetFloat("Horizontal", 0, 0.1f, Time.deltaTime);
-                this._animator.SetFloat("Vertical", 0, 0.1f, Time.deltaTime);
-                this._animator.SetFloat("WalkSpeed", 0);
+                _AnimatorComponent.SetFloat("Horizontal", 0, 0.1f, InputDeltaTime);
+                _AnimatorComponent.SetFloat("Vertical", 0, 0.1f, InputDeltaTime);
+                _AnimatorComponent.SetFloat("WalkSpeed", 0);
             }
         }
 
@@ -270,27 +274,24 @@ namespace WorkingTitle.Entities
         /// </summary>
         private void UpdateGroundedStatus()
         {
-#if UNITY_PLAYER_PHYSICS
-            var isGrounded = Physics.Raycast(transform.position + Vector3.up * this._groundDistanceCheck * .5f, Vector3.down, this._groundDistanceCheck);
-#else
-            var isGrounded = this._characterController.isGrounded;
-#endif
-            if(this._isJumping)
+            bool isGrounded = _CharacterControllerComponent.isGrounded;
+
+            if(_IsJumping)
             {
-                if(this._lastIsGroundedCheck && !isGrounded)
+                if(_LastIsGroundedCheck && !isGrounded)
                 {
-                    this._lastIsGroundedCheck = false;
-                    this._isGrounded = false;
-                    this._isJumping = false;
+                    _LastIsGroundedCheck = false;
+                    _IsGrounded = false;
+                    _IsJumping = false;
                 }
             }
             else
             {
-                this._isGrounded = isGrounded;
-                this._lastIsGroundedCheck = isGrounded;
+                _IsGrounded = isGrounded;
+                _LastIsGroundedCheck = isGrounded;
             }
         }
 
-#endregion
+    #endregion
     }
 }

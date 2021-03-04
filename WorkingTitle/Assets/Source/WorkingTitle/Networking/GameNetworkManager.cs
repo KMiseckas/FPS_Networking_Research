@@ -21,6 +21,11 @@ namespace WorkingTitle.Networking
         public static event ServerEventHandler Server_OnStartHost;
         public static event ServerEventHandler Server_OnStopHost;
 
+        public override void ConfigureServerFrameRate()
+        {
+            Application.targetFrameRate = serverTickRate;
+        }
+
         public override void OnServerAddPlayer(NetworkConnection conn)
         {
             Server_OnAddPlayerRequest (conn);

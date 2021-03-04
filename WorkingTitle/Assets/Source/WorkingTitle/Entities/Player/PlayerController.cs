@@ -3,14 +3,12 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using WorkingTitle.Input;
 using Mirror;
-using System.Collections;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
+using System.Collections.Generic;
 
 namespace WorkingTitle.Entities.Player
 {
     [RequireComponent(typeof(PlayerInput))]
-    public class PlayerController : NetworkBehaviour
+    public partial class PlayerController : NetworkBehaviour
     {
         #region Fields
 
@@ -19,13 +17,35 @@ namespace WorkingTitle.Entities.Player
         /// </summary>
         [SerializeField] private GameObject _DefaultPlayerEntity;
 
-        private PlayerEntity _PlayerEntity;
+        /// <summary>
+        /// Entity that the controller sends recorded input to.
+        /// </summary>
+        [SerializeField] private PlayerEntity _PlayerEntity;
 
-        private PlayerInput _input;
+        /// <summary>
+        /// Instance that provides input messages.
+        /// </summary>
+        private PlayerInput _Input;
 
+        /// <summary>
+        /// Reference to the instance of the player state object.
+        /// </summary>
         private PlayerState _PlayerState;
 
+        /// <summary>
+        /// Reference to the input recorded by this object during the last input update frame.
+        /// </summary>
         private InputData _FrameInputData = new InputData();
+
+        private Dictionary<uint, InputData> _InputDataHistory = new Dictionary<uint, InputData>();
+
+        private Dictionary<uint, InputResultData> _InputResultDataHistory = new Dictionary<uint, InputResultData>();
+
+        private Queue<InputData> _InputDataQueue = new Queue<InputData>();
+
+        private uint _CurrentInputDataID = 0;
+
+        private uint _LastClearedID = 0;
 
         #endregion
 
@@ -44,9 +64,9 @@ namespace WorkingTitle.Entities.Player
             bool isOnHost = isServer && !isLocalPlayer;
 
             //Player controller should only exist on owner of the object.
-            if((!isLocalPlayer && !isOnHost) || isOnHost)
+            if((!isLocalPlayer && !isOnHost))
             {
-                return;
+                this.gameObject.SetActive(false);
             }
         }
 
@@ -56,18 +76,76 @@ namespace WorkingTitle.Entities.Player
 
             HookInput();
             CmdSpawnPlayerEntity();
+
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Confined;
+        }
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+
+            this.gameObject.SetActive(true);
         }
 
         private void Update()
         {
-            InputData cmdInputData = _FrameInputData;
+            uint nextResultID = 0;
+            bool hasDataToRecord = false;
 
-            if(!cmdInputData.Equals(_FrameInputData))
+            if(_PlayerEntity != null)
             {
-                NetLog.ClientLog(this, $"Moving Character : Forward ({_FrameInputData.MoveZ})");
+                if(isLocalPlayer)
+                {
+                    hasDataToRecord = true;
 
-                CmdApplyInputToPlayerEntity(_FrameInputData);
-                RotateCamera(_FrameInputData.RotateAroundY);
+                    nextResultID = _CurrentInputDataID++;
+
+                    _FrameInputData.DeltaTime = Time.deltaTime;
+                    _FrameInputData.ID = nextResultID;
+
+                    ApplyInputToPlayerEntity(_FrameInputData);
+                    CmdSendInputDataToPlayerEntity(_FrameInputData);
+                    AddToInputDataHistory(_FrameInputData);
+
+                    _PlayerEntity.UpdateEntity();
+                }
+                else if(isServer)
+                {
+                    hasDataToRecord = _InputDataQueue.Count > 0;
+
+                    while(_InputDataQueue.Count > 0)
+                    {
+                        InputData nextInputData = _InputDataQueue.Dequeue();
+
+                        ApplyInputToPlayerEntity(nextInputData);
+
+                        nextResultID = nextInputData.ID;
+
+                        _PlayerEntity.UpdateEntity();
+                    }
+
+                    _InputDataQueue.Clear();
+                }
+
+                if(hasDataToRecord)
+                {
+                    InputResultData resultData = RecordInputResults(nextResultID);
+
+                    if(isLocalPlayer)
+                    {
+                        AddToInputResultDataHistory(resultData);
+                    }
+                    else if(isServer)
+                    {
+                        TargetVerifyClientInputResults(resultData);
+                    }
+                }
+            }
+
+            if(isLocalPlayer)
+            {
+                RotateCamera();
             }
         }
 
@@ -96,12 +174,12 @@ namespace WorkingTitle.Entities.Player
         /// <param name="actionName"></param>
         private InputAction GetAction(string actionMapName, string actionName)
         {
-            if (this._input == null)
+            if (this._Input == null)
             {
-                this._input = this.GetComponent<PlayerInput>();
+                this._Input = this.GetComponent<PlayerInput>();
             }
 
-            var actionMap = this._input.actions.FindActionMap(actionMapName, true);
+            var actionMap = this._Input.actions.FindActionMap(actionMapName, true);
             return actionMap.FindAction(actionName, true);
         }
 
@@ -131,31 +209,121 @@ namespace WorkingTitle.Entities.Player
         }
 
         /// <summary>
-        /// Apply input data from a <see cref="InputData"/> struct value.
+        /// Apply input data from a <see cref="InputData"/> struct value to the player entity.
         /// </summary>
         /// <param name="inputData"></param>
-        [Command]
-        protected void CmdApplyInputToPlayerEntity(InputData inputData)
+        private void ApplyInputToPlayerEntity(InputData inputData)
         {
-            NetLog.ServerLog(this,$"Moving Character : Forward ({inputData.MoveZ})");
-
+            _PlayerEntity.InputDeltaTime = inputData.DeltaTime;
             _PlayerEntity.IsSprinting = inputData.Sprinting;
+
+            _PlayerEntity.AddMovementInput(new Vector3(inputData.MoveX, 0, inputData.MoveZ));
+            _PlayerEntity.AddRotationInput(new Vector2(inputData.RotateAroundY, inputData.RotateAroundX));
 
             if(inputData.Jump)
             {
-                _PlayerEntity.Jump();
+                _PlayerEntity.AddJumpInput();
             }
 
-            _PlayerEntity.Move(new Vector3(inputData.MoveX, 0, inputData.MoveZ));
-            _PlayerEntity.Rotate(new Vector2(inputData.RotateAroundY, inputData.RotateAroundX));
+            if(inputData.Interact)
+            {
+                _PlayerEntity.AddInteractionInput();
+            }
+        }
+
+        /// <summary>
+        /// Send input data to the server to the player entity.
+        /// </summary>
+        /// <param name="inputData"></param>
+        [Command]
+        private void CmdSendInputDataToPlayerEntity(InputData inputData)
+        {
+            _InputDataQueue.Enqueue(inputData);        
         }
 
         [Client]
-        private void RotateCamera(float rotation)
+        private void AddToInputDataHistory(InputData inputData)
+        {
+            _InputDataHistory.Add(inputData.ID, inputData);
+        }
+
+        [Client]
+        private void AddToInputResultDataHistory(InputResultData inputResultData)
+        {
+            _InputResultDataHistory.Add(inputResultData.ID, inputResultData);
+        }
+
+        private InputResultData RecordInputResults(uint resultID)
+        {
+            Vector3 position = _PlayerEntity.transform.position;
+            float yRotation = _PlayerEntity.transform.rotation.eulerAngles.y;
+
+            InputResultData resultData = new InputResultData();
+            resultData.PositionX = position.x;
+            resultData.PositionY = position.y;
+            resultData.PositionZ = position.z;
+            resultData.RotationY = yRotation;
+            resultData.ID = resultID;
+
+            return resultData;
+        }
+
+        [TargetRpc]
+        private void TargetVerifyClientInputResults(InputResultData serverResultData)
+        {
+            bool foundResult = _InputResultDataHistory.TryGetValue(serverResultData.ID, out InputResultData clientResultData);
+
+            if(foundResult)
+            {
+                if(!clientResultData.Equals(serverResultData))
+                {
+                    ApplyServerInputResults(serverResultData);
+                    ReplayInputData(serverResultData.ID);
+
+                    Debug.LogWarning("Out Of Sync - Re-Syncing client data");
+                }
+
+                ClearResultsUptoID(serverResultData.ID);
+            }
+            else
+            {
+                Debug.LogWarning($"Input Result Data [#{serverResultData.ID}] out of Sync! Something went wrong! The data stored in the client, with a specific `ID`, cannot be found.");
+            }
+
+        }
+
+        [Client]
+        private void ApplyServerInputResults(InputResultData inputResultData)
+        {
+            Transform transform = _PlayerEntity.transform;
+            transform.position = new Vector3(inputResultData.PositionX, inputResultData.PositionY, inputResultData.PositionZ);
+            transform.rotation = Quaternion.Euler(new Vector3(transform.rotation.eulerAngles.x, inputResultData.RotationY, transform.rotation.eulerAngles.z));
+        }
+
+        [Client]
+        private void ReplayInputData(uint startingID)
+        {
+
+        }
+
+        [Client]
+        private void ClearResultsUptoID(uint id)
+        {
+            for(uint i = _LastClearedID; i <= id; i++)
+            {
+                _InputDataHistory.Remove(i);
+                _InputResultDataHistory.Remove(i);
+            }
+
+            _LastClearedID = id;
+        }
+
+        [Client]
+        private void RotateCamera()
         {
             if(_PlayerEntity != null)
             {
-                _PlayerEntity.RotateCamera(rotation);
+                _PlayerEntity.RotateCamera();
             }
         }
 
@@ -279,10 +447,12 @@ namespace WorkingTitle.Entities.Player
             _FrameInputData.Interact = false;
         }
 
+        #endregion
+
         /// <summary>
-        /// Holds input data recorded by the player controller for a specific update frame.
+        /// Holds input data recorded by the player controller for a single input frame.
         /// </summary>
-        protected struct InputData : IEquatable<InputData>
+        struct InputData : IEquatable<InputData>
         {
             public float MoveX;
             public float MoveZ;
@@ -292,18 +462,45 @@ namespace WorkingTitle.Entities.Player
             public bool Interact;
             public bool Sprinting;
 
+            public uint ID;
+
+            public float DeltaTime;
+
             public bool Equals(InputData other)
             {
-                return other.MoveX != MoveX
+                return !(other.MoveX != MoveX
                     || other.MoveZ != MoveZ
                     || other.Jump != Jump
-                    || other.MoveX != MoveX
-                    || other.MoveX != MoveX
-                    || other.MoveX != MoveX
-                    || other.MoveX != MoveX;
+                    || other.RotateAroundY != RotateAroundY
+                    || other.RotateAroundX != RotateAroundX
+                    || other.Interact != Interact
+                    || other.Sprinting != Sprinting
+                    || other.DeltaTime != DeltaTime
+                    || other.ID != ID);
             }
         }
 
-        #endregion
+        /// <summary>
+        /// Holds the result data of inputs that have been applied to the <see cref="PlayerEntity"/>. Only hold results that are required for recoinciliation functionality.
+        /// </summary>
+        struct InputResultData : IEquatable<InputResultData>
+        {
+            public float PositionX;
+            public float PositionY;
+            public float PositionZ;
+
+            public float RotationY;
+
+            public uint ID;
+
+            public bool Equals(InputResultData other)
+            {
+                return !(other.PositionX != PositionX
+                    || other.PositionY != PositionY
+                    || other.PositionZ != PositionZ
+                    || other.RotationY != RotationY
+                    || other.ID != ID);
+            }
+        }
     }
 }
