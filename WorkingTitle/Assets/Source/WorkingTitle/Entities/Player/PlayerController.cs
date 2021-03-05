@@ -4,6 +4,8 @@ using UnityEngine.InputSystem;
 using WorkingTitle.Input;
 using Mirror;
 using System.Collections.Generic;
+using UnityEngine.Assertions;
+using WorkingTitle.Utils;
 
 namespace WorkingTitle.Entities.Player
 {
@@ -11,6 +13,11 @@ namespace WorkingTitle.Entities.Player
     public partial class PlayerController : NetworkBehaviour
     {
         #region Fields
+
+        /// <summary>
+        /// The max amount of the input and result history to store.
+        /// </summary>
+        private const int MAX_HISTORY_SIZE = 1000;
 
         /// <summary>
         /// The prefab of the player entity to spawn.
@@ -37,14 +44,29 @@ namespace WorkingTitle.Entities.Player
         /// </summary>
         private InputData _FrameInputData = new InputData();
 
+        /// <summary>
+        /// Cache for the local client input data used so far.
+        /// </summary>
         private Dictionary<uint, InputData> _InputDataHistory = new Dictionary<uint, InputData>();
 
+        /// <summary>
+        /// Cache for the local client input result data produced so far.
+        /// </summary>
         private Dictionary<uint, InputResultData> _InputResultDataHistory = new Dictionary<uint, InputResultData>();
 
+        /// <summary>
+        /// Servers queue of client input that is awaiting processing before sending off for verification to owning client.
+        /// </summary>
         private Queue<InputData> _InputDataQueue = new Queue<InputData>();
 
-        private uint _CurrentInputDataID = 0;
+        /// <summary>
+        /// The next input data ID to use for creating an InputData value struct.
+        /// </summary>
+        private uint _NextInputDataID = 0;
 
+        /// <summary>
+        /// The last ID used to clear input and input result history cache.
+        /// </summary>
         private uint _LastClearedID = 0;
 
         #endregion
@@ -99,7 +121,7 @@ namespace WorkingTitle.Entities.Player
                 {
                     hasDataToRecord = true;
 
-                    nextResultID = _CurrentInputDataID++;
+                    nextResultID = _NextInputDataID++;
 
                     _FrameInputData.DeltaTime = Time.deltaTime;
                     _FrameInputData.ID = nextResultID;
@@ -153,6 +175,9 @@ namespace WorkingTitle.Entities.Player
 
         #region Functions
 
+        /// <summary>
+        /// Hook any input.
+        /// </summary>
         private void HookInput()
         {
             BindAction("Player", "Look", Player_PerformLook, ActionEventType.Performed);
@@ -174,12 +199,13 @@ namespace WorkingTitle.Entities.Player
         /// <param name="actionName"></param>
         private InputAction GetAction(string actionMapName, string actionName)
         {
-            if (this._Input == null)
+            if (_Input == null)
             {
-                this._Input = this.GetComponent<PlayerInput>();
+                _Input = GetComponent<PlayerInput>();
             }
 
-            var actionMap = this._Input.actions.FindActionMap(actionMapName, true);
+            InputActionMap actionMap = _Input.actions.FindActionMap(actionMapName, true);
+
             return actionMap.FindAction(actionName, true);
         }
 
@@ -241,18 +267,38 @@ namespace WorkingTitle.Entities.Player
             _InputDataQueue.Enqueue(inputData);        
         }
 
+        /// <summary>
+        /// Add the specified input to the clients input cache.
+        /// </summary>
+        /// <param name="inputData"> Instance of input data.</param>
         [Client]
         private void AddToInputDataHistory(InputData inputData)
         {
             _InputDataHistory.Add(inputData.ID, inputData);
         }
 
+        /// <summary>
+        /// Add results to the clients cache that were produced as the by product of the input data being applied to the player entity.
+        /// </summary>
+        /// <param name="inputResultData">Instance of results produced by latest applied input</param>
         [Client]
         private void AddToInputResultDataHistory(InputResultData inputResultData)
         {
             _InputResultDataHistory.Add(inputResultData.ID, inputResultData);
+
+            if(_InputResultDataHistory.Count >= MAX_HISTORY_SIZE)
+            {
+                _LastClearedID++;
+
+                _InputResultDataHistory.Remove(_LastClearedID);
+            }
         }
 
+        /// <summary>
+        /// Record the input results for a specific ID. ID will be stored as part of the returned <see cref="InputResultData"/> instance.
+        /// </summary>
+        /// <param name="resultID">ID to create a instance of <see cref="InputResultData"/> instance for.</param>
+        /// <returns>New value instance of <see cref="InputResultData"/>.</returns>
         private InputResultData RecordInputResults(uint resultID)
         {
             Vector3 position = _PlayerEntity.transform.position;
@@ -268,28 +314,47 @@ namespace WorkingTitle.Entities.Player
             return resultData;
         }
 
+        /// <summary>
+        /// Override any existing <see cref="_InputResultDataHistory"/> elements with current and most up-to-date player entity properties.
+        /// </summary>
+        /// <param name="resultID"> Result ID to override.</param>
+        [Client]
+        private void OverrideInputResultsAtID(uint resultID)
+        {
+            Vector3 position = _PlayerEntity.transform.position;
+            float yRotation = _PlayerEntity.transform.rotation.eulerAngles.y;
+
+            _InputResultDataHistory.TryGetValue(resultID, out InputResultData outResults);
+
+            outResults.PositionX = position.x;
+            outResults.PositionY = position.y;
+            outResults.PositionZ = position.z;
+            outResults.RotationY = yRotation;
+        }
+
+        /// <summary>
+        /// Check if the results produced by the server match the results produced by the client at a given unique ID. If results are not identical, then act and apply client reconciliation.
+        /// </summary>
+        /// <param name="serverResultData">The latest instance of results created by the server</param>
         [TargetRpc]
         private void TargetVerifyClientInputResults(InputResultData serverResultData)
         {
             bool foundResult = _InputResultDataHistory.TryGetValue(serverResultData.ID, out InputResultData clientResultData);
+
+            Assert.IsTrue(foundResult, $"Input Result Data [#{serverResultData.ID}] out of Sync! Something went wrong! The data stored in the client, with a specific `ID`, cannot be found.");
 
             if(foundResult)
             {
                 if(!clientResultData.Equals(serverResultData))
                 {
                     ApplyServerInputResults(serverResultData);
-                    ReplayInputData(serverResultData.ID);
+                    ReplayInputData(serverResultData.ID + 1);
 
                     Debug.LogWarning("Out Of Sync - Re-Syncing client data");
                 }
 
                 ClearResultsUptoID(serverResultData.ID);
             }
-            else
-            {
-                Debug.LogWarning($"Input Result Data [#{serverResultData.ID}] out of Sync! Something went wrong! The data stored in the client, with a specific `ID`, cannot be found.");
-            }
-
         }
 
         [Client]
@@ -298,18 +363,44 @@ namespace WorkingTitle.Entities.Player
             Transform transform = _PlayerEntity.transform;
             transform.position = new Vector3(inputResultData.PositionX, inputResultData.PositionY, inputResultData.PositionZ);
             transform.rotation = Quaternion.Euler(new Vector3(transform.rotation.eulerAngles.x, inputResultData.RotationY, transform.rotation.eulerAngles.z));
+
+            Physics.SyncTransforms();
         }
 
+        /// <summary>
+        /// Reapply all input to the player entity starting which the <see cref="InputData"/> with an ID that is passed in as the argument. Replaying will override all elements in <see cref="_InputResultDataHistory"/>
+        /// with new values based on results produced by the replay.
+        /// </summary>
+        /// <param name="startingID"> The ID of the input data to start replaying the game state from.</param>
         [Client]
         private void ReplayInputData(uint startingID)
         {
+            uint iteratedID = startingID;
 
+            while(iteratedID <= _NextInputDataID - 1)
+            {
+                bool foundInput = _InputDataHistory.TryGetValue(iteratedID, out InputData outInputdata);
+
+                Assert.IsTrue(foundInput, $"Input Data [#{iteratedID}] missing! Something went wrong! The input data stored in the client history, with a specific `ID`, cannot be found.");
+
+                ApplyInputToPlayerEntity(outInputdata);
+
+                _PlayerEntity.UpdateEntity();
+
+                OverrideInputResultsAtID(iteratedID);
+
+                iteratedID++;
+            }
         }
 
+        /// <summary>
+        /// Clear results and input data caches up to a specific ID.
+        /// </summary>
+        /// <param name="id"> Id up to which to clear the caches.</param>
         [Client]
         private void ClearResultsUptoID(uint id)
         {
-            for(uint i = _LastClearedID; i <= id; i++)
+            for(uint i = _LastClearedID + 1; i <= id; i++)
             {
                 _InputDataHistory.Remove(i);
                 _InputResultDataHistory.Remove(i);
@@ -318,6 +409,9 @@ namespace WorkingTitle.Entities.Player
             _LastClearedID = id;
         }
 
+        /// <summary>
+        /// Rotate the players camera.
+        /// </summary>
         [Client]
         private void RotateCamera()
         {
@@ -495,10 +589,10 @@ namespace WorkingTitle.Entities.Player
 
             public bool Equals(InputResultData other)
             {
-                return !(other.PositionX != PositionX
-                    || other.PositionY != PositionY
-                    || other.PositionZ != PositionZ
-                    || other.RotationY != RotationY
+                return !(!Maths.ApproxEquals(other.PositionX, PositionX)
+                    || !Maths.ApproxEquals(other.PositionY, PositionY)
+                    || !Maths.ApproxEquals(other.PositionZ, PositionZ)
+                    || !Maths.ApproxEquals(other.RotationY, RotationY)
                     || other.ID != ID);
             }
         }
