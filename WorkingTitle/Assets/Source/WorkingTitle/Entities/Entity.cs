@@ -291,7 +291,6 @@ namespace WorkingTitle.Entities
                 _LastIsGroundedCheck = isGrounded;
             }
         }
-
-    #endregion
+        #endregion
     }
 }
