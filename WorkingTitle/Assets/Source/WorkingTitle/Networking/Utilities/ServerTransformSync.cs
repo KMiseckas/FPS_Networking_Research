@@ -1,6 +1,5 @@
 using Mirror;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,7 +31,9 @@ namespace WorkingTitle.Networking.Utilities
 
         private double _TimeOfLastSnapshot;
 
-        private double _ClientInterpolationTime;
+        private double _ClientPositionInterpolationTime;
+
+        private double _ClientRotationInterpolationTime;
 
         private List<PositionSnapshot> _PositionSnapshotList = new List<PositionSnapshot>();
 
@@ -52,7 +53,8 @@ namespace WorkingTitle.Networking.Utilities
 
         protected virtual void UpdateClientOnly()
         {
-
+            SetPosition(GetInterpolatedPosition());
+            SetRotation(GetInterpolatedRotation());
         }
 
         [Server]
@@ -60,6 +62,112 @@ namespace WorkingTitle.Networking.Utilities
         {
             RecordPositionData();
             RecordRotationData();
+        }
+
+        [Client]
+        private Vector3 GetInterpolatedPosition()
+        {
+            if(_PositionSnapshotList.Count > 0)
+            {
+                _ClientPositionInterpolationTime += Time.unscaledDeltaTime;
+            }
+
+            Vector3 interpolateFromPosition = default;
+            Vector3 interpolateToPosition = default;
+
+            float interpolateFraction = 0;
+
+            for(int i = 0; i < _PositionSnapshotList.Count; i++)
+            {
+                if(i + 1 == _PositionSnapshotList.Count)
+                {
+                    if(_PositionSnapshotList[0].ServerTime > _ClientPositionInterpolationTime)
+                    {
+                        interpolateToPosition = _PositionSnapshotList[0].ToVector3();
+                        interpolateFromPosition = interpolateToPosition;
+                    }
+                    else
+                    {
+                        interpolateToPosition = _PositionSnapshotList[i].ToVector3();
+                        interpolateFromPosition = interpolateToPosition;
+                    }
+
+                    interpolateFraction = 0;
+                }
+                else
+                {
+                    PositionSnapshot fromSnapshot = _PositionSnapshotList[i];
+                    PositionSnapshot toSnapshot = _PositionSnapshotList[i+1];
+
+                    if(fromSnapshot.ServerTime <= _ClientPositionInterpolationTime && toSnapshot.ServerTime >= _ClientPositionInterpolationTime)
+                    {
+                        interpolateFromPosition = fromSnapshot.ToVector3();
+                        interpolateToPosition = toSnapshot.ToVector3();
+
+                        double snapshotDiff = toSnapshot.ServerTime - fromSnapshot.ServerTime;
+                        double toTargetDiff = toSnapshot.ServerTime - _ClientPositionInterpolationTime;
+
+                        interpolateFraction = 1 - Mathf.Clamp01((float)(toTargetDiff / snapshotDiff));
+
+                        break;
+                    }
+                }
+            }
+
+            return Vector3.Lerp(interpolateFromPosition, interpolateToPosition, interpolateFraction);
+        }
+
+        [Client]
+        private Vector3 GetInterpolatedRotation()
+        {
+            if(_RotationSnapshotList.Count > 0)
+            {
+                _ClientRotationInterpolationTime += Time.unscaledDeltaTime;
+            }
+
+            Vector3 interpolateFromRotation = default;
+            Vector3 interpolateToRotation = default;
+
+            float interpolateFraction = 0;
+
+            for(int i = 0; i < _RotationSnapshotList.Count; i++)
+            {
+                if(i + 1 == _RotationSnapshotList.Count)
+                {
+                    if(_RotationSnapshotList[0].ServerTime > _ClientRotationInterpolationTime)
+                    {
+                        interpolateToRotation = _RotationSnapshotList[0].ToVector3();
+                        interpolateFromRotation = interpolateToRotation;
+                    }
+                    else
+                    {
+                        interpolateToRotation = _RotationSnapshotList[i].ToVector3();
+                        interpolateFromRotation = interpolateToRotation;
+                    }
+
+                    interpolateFraction = 0;
+                }
+                else
+                {
+                    RotationSnapshot fromSnapshot = _RotationSnapshotList[i];
+                    RotationSnapshot toSnapshot = _RotationSnapshotList[i+1];
+
+                    if(fromSnapshot.ServerTime <= _ClientRotationInterpolationTime && toSnapshot.ServerTime >= _ClientRotationInterpolationTime)
+                    {
+                        interpolateFromRotation = fromSnapshot.ToVector3();
+                        interpolateToRotation = toSnapshot.ToVector3();
+
+                        double snapshotDiff = toSnapshot.ServerTime - fromSnapshot.ServerTime;
+                        double toTargetDiff = toSnapshot.ServerTime - _ClientRotationInterpolationTime;
+
+                        interpolateFraction = 1 - Mathf.Clamp01((float)(toTargetDiff / snapshotDiff));
+
+                        break;
+                    }
+                }
+            }
+
+            return Vector3.Lerp(interpolateFromRotation, interpolateToRotation, interpolateFraction);
         }
 
         [Server]
@@ -91,7 +199,7 @@ namespace WorkingTitle.Networking.Utilities
         {
             if(isClientOnly)
             {
-                ApplyPosition();
+                AddPositionSnapshotToBuffer(newData);
             }
         }
 
@@ -100,20 +208,42 @@ namespace WorkingTitle.Networking.Utilities
         {
             if(isClientOnly)
             {
-                ApplyRotation();
+                AddRotationSnapshotToBuffer(newData);
             }
         }
 
         [Client]
-        protected void ApplyPosition()
+        protected void AddPositionSnapshotToBuffer(PositionSnapshot newPositionData)
         {
-            transform.position = new Vector3(_PositionSnapshot.PositionX, _PositionSnapshot.PositionY, _PositionSnapshot.PositionZ);
+            if(_PositionSnapshotList.Count == 0)
+            {
+                _ClientPositionInterpolationTime = newPositionData.ServerTime - INTERPOLATION_OFFSET;
+            }
+
+            _PositionSnapshotList.Add(newPositionData);
         }
 
         [Client]
-        protected void ApplyRotation()
+        protected void AddRotationSnapshotToBuffer(RotationSnapshot newRotationData)
         {
-            transform.eulerAngles = new Vector3(_RotationSnapshot.RotationX, _RotationSnapshot.RotationY, _RotationSnapshot.RotationZ);
+            if(_RotationSnapshotList.Count == 0)
+            {
+                _ClientRotationInterpolationTime = newRotationData.ServerTime - INTERPOLATION_OFFSET;
+            }
+
+            _RotationSnapshotList.Add(newRotationData);
+        }
+
+        [Client]
+        private void SetPosition(Vector3 position)
+        {
+            transform.position = position;
+        }
+
+        [Client]
+        private void SetRotation(Vector3 rotation)
+        {
+            transform.eulerAngles = rotation;
         }
 
         protected struct PositionSnapshot : IEquatable<PositionSnapshot>
@@ -130,6 +260,11 @@ namespace WorkingTitle.Networking.Utilities
                     || other.PositionY != PositionY
                     || other.PositionZ != PositionZ);
             }
+
+            public Vector3 ToVector3()
+            {
+                return new Vector3(PositionX, PositionY, PositionZ);
+            }
         }
 
         protected struct RotationSnapshot : IEquatable<RotationSnapshot>
@@ -145,6 +280,11 @@ namespace WorkingTitle.Networking.Utilities
                 return !(other.RotationX != RotationX
                     || other.RotationY != RotationY
                     || other.RotationZ != RotationZ);
+            }
+
+            public Vector3 ToVector3()
+            {
+                return new Vector3(RotationX, RotationY, RotationZ);
             }
         }
     }

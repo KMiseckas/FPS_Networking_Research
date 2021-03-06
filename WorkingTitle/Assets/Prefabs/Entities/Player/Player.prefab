@@ -14132,7 +14132,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   syncMode: 0
-  syncInterval: 0.5
+  syncInterval: 0.1
   _InterpolationEnabled: 1
   _SyncRotation: 1
   _SyncPosition: 1

@@ -27,6 +27,14 @@ namespace WorkingTitle.Entities.Player
             }
         }
 
+        protected override void UpdateClientOnly()
+        {
+            if(_CanSync)
+            {
+                base.UpdateClientOnly();
+            }
+        }
+
         protected override void OnPositionSynced(PositionSnapshot oldData, PositionSnapshot newData)
         {
             if(_CanSync)
