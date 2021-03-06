@@ -65,8 +65,6 @@ namespace WorkingTitle.Networking.Utilities
         [Server]
         private void RecordPositionData()
         {
-            Debug.Log("ON RECORD POSITION - BASE CLASS");
-
             _PositionSnapshot = new PositionSnapshot();
 
             _PositionSnapshot.PositionX = transform.position.x;
@@ -79,8 +77,6 @@ namespace WorkingTitle.Networking.Utilities
         [Server]
         private void RecordRotationData()
         {
-            Debug.Log("ON RECORD ROTATION - BASE CLASS");
-
             _RotationSnapshot = new RotationSnapshot();
 
             _RotationSnapshot.RotationX = transform.eulerAngles.x;
@@ -97,8 +93,6 @@ namespace WorkingTitle.Networking.Utilities
             {
                 ApplyPosition();
             }
-
-            Debug.Log("ON POSITION SYNCED - BASE CLASS");
         }
 
         [Client]
@@ -108,8 +102,6 @@ namespace WorkingTitle.Networking.Utilities
             {
                 ApplyRotation();
             }
-
-            Debug.Log("ON ROTATION SYNCED - BASE CLASS");
         }
 
         [Client]

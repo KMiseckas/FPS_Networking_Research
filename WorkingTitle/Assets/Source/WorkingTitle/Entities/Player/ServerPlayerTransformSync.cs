@@ -24,31 +24,21 @@ namespace WorkingTitle.Entities.Player
             if(_IsPartOfPossessedPlayerEntity)
             {
                 _CanSync = _UpdateOwner;
-
-                Debug.Log($"Can Sync = {_CanSync}");
             }
         }
 
         protected override void OnPositionSynced(PositionSnapshot oldData, PositionSnapshot newData)
         {
-            Debug.Log("ON POSITION SYNCED - PARENT CLASS");
-
             if(_CanSync)
             {
-                Debug.Log("ON POSITION SYNCED - PARENT CLASS - CAN SYNC!");
-
                 base.OnPositionSynced(oldData, newData);
             }
         }
 
         protected override void OnRotationSynced(RotationSnapshot oldData, RotationSnapshot newData)
         {
-            Debug.Log("ON ROTATION SYNCED - PARENT CLASS");
-
             if(_CanSync)
             {
-                Debug.Log("ON ROTATION SYNCED - PARENT CLASS - CAN SYNC!");
-
                 base.OnRotationSynced(oldData, newData);
             }
         }
