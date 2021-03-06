@@ -14005,6 +14005,7 @@ GameObject:
   - component: {fileID: 3924489633342303108}
   - component: {fileID: 6451891411849496473}
   - component: {fileID: 3958291499068292727}
+  - component: {fileID: -8112153762763347492}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -14093,7 +14094,7 @@ CharacterController:
   m_GameObject: {fileID: 6769380712087042894}
   m_Material: {fileID: 0}
   m_IsTrigger: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Height: 2
   m_Radius: 0.25
@@ -14118,6 +14119,24 @@ MonoBehaviour:
   serverOnly: 0
   m_AssetId: 
   hasSpawned: 0
+--- !u!114 &-8112153762763347492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6769380712087042894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b2dbecd5358a0644a20f68af81a5c29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncMode: 0
+  syncInterval: 0.1
+  _InterpolationEnabled: 1
+  _SyncRotation: 1
+  _SyncPosition: 1
+  _UpdateOwner: 0
 --- !u!1 &6776882438127451750
 GameObject:
   m_ObjectHideFlags: 0

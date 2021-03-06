@@ -18,6 +18,8 @@ namespace WorkingTitle.Entities.Player
         [SyncVar]
         private uint _PlayerControllerID;
 
+        private bool _IsPossessed = false;
+
         [SerializeField]
         private GameObject _Camera;
 
@@ -26,7 +28,10 @@ namespace WorkingTitle.Entities.Player
         #region
 
         public GameObject Camera{get => _Camera;}
+
         public uint PlayerControllerID { get => _PlayerControllerID; set => _PlayerControllerID=value; }
+
+        public bool IsPossessed { get => _IsPossessed; set => _IsPossessed=value; }
 
         #endregion
 
@@ -40,6 +45,9 @@ namespace WorkingTitle.Entities.Player
             {
                 if(networkIdentity.isLocalPlayer)
                 {
+                    IsPossessed = true;
+
+                    _CharacterControllerComponent.enabled = true;
                     _Camera.SetActive(true);
                     this.gameObject.SetActive(true);
 
@@ -53,6 +61,7 @@ namespace WorkingTitle.Entities.Player
             base.OnStartServer();
 
             this.enabled = true;
+            _CharacterControllerComponent.enabled = true;
 
             _Camera.SetActive(false);
         }

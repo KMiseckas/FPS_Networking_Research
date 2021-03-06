@@ -11,7 +11,7 @@ namespace WorkingTitle.Entities
         /// <summary>
         /// Component of `Character Controller` which handles player movement and collision logic.
         /// </summary>
-        private CharacterController _CharacterControllerComponent;
+        protected CharacterController _CharacterControllerComponent;
 
         /// <summary>
         /// Component of `Animator` which handles the entity animations during movement, etc.
