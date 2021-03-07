@@ -303,7 +303,7 @@ namespace WorkingTitle.Networking.Utilities
                     _CurrentPosition = newData.ToVector3();
                 }
 #else
-                AddPositionSnapshotToBuffer(newData);
+                AddPositionSnapshotToCache(newData);
 #endif
             }
         }
@@ -328,7 +328,7 @@ namespace WorkingTitle.Networking.Utilities
                     _CurrentRotation = newData.ToVector3();
                 }
 #else
-                AddRotationSnapshotToBuffer(newData);
+                AddRotationSnapshotToCache(newData);
 #endif
             }
         }
