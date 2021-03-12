@@ -31,18 +31,6 @@ namespace WorkingTitle.GameFlow
         [Tooltip("Prefab reference to the player state that should be attached to the newly created player controller.")]
         private PlayerState _PlayerStateToSpawn;
 
-        /// <summary>
-        /// <see cref="GameState"/> in which the player will start upon connection to the game session.
-        /// </summary>
-        [SerializeField]
-        [Tooltip("Prefab reference to the game state to launch and put the players into upon connecting to the server game session")]
-        private GameState _StartingGameState;
-
-        /// <summary>
-        /// The currently active <see cref="GameState"/> within this game session.
-        /// </summary>
-        private GameState _CurrentGameState;
-
         private readonly Dictionary<int, PlayerController> _ControllerDictionary = new Dictionary<int, PlayerController> ();
 
         #endregion
@@ -63,9 +51,7 @@ namespace WorkingTitle.GameFlow
 
         public override void OnStartServer()
         {
-            _CurrentGameState = Instantiate(_StartingGameState);
 
-            NetworkServer.Spawn(_CurrentGameState.gameObject);
         }
 
         [Server]
