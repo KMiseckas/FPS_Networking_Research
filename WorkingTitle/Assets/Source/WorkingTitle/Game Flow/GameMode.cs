@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using WorkingTitle.Entities.Player;
+using WorkingTitle.GameFlow.FSMSystem;
 using WorkingTitle.Networking;
 
 namespace WorkingTitle.GameFlow
@@ -13,7 +14,7 @@ namespace WorkingTitle.GameFlow
     /// <summary>
     /// Abstract class for the handling of the overall rules and properties for the the current game mode being played. This is only created and visible on the server.
     /// </summary>
-    public abstract class GameMode : NetworkBehaviour
+    public abstract class GameMode : MonoBehaviour
     {
         #region Fields
 
@@ -47,11 +48,6 @@ namespace WorkingTitle.GameFlow
             GameNetworkManager.Server_OnClientDisconnectFromServer -= OnClientDisconnectedFromServer;
             GameNetworkManager.Server_OnConnectedClientReady -= OnConnectedClientReady;
             GameNetworkManager.Server_OnAddPlayerRequest -= OnAddPlayerRequest;
-        }
-
-        public override void OnStartServer()
-        {
-
         }
 
         [Server]

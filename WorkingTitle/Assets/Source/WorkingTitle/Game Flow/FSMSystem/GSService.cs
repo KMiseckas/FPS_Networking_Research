@@ -19,28 +19,31 @@ namespace WorkingTitle.GameFlow.FSMSystem
 
         public GameState<U> ActiveState { get => _ActiveState; set => _ActiveState=value; }
 
-        public GSService(U initialGameStateID)
-        {
-            SetGameState(initialGameStateID);
-        }
-
         public void AddTransition(Transition<T,U> transition)
         {
             _TransitionMap.Add(transition.ID, transition);
 
-            Debug.LogError($"Added Transition to GSServices: [{transition.ID}]");
+            Debug.Log($"Added Transition to GSServices: [{transition.ID}]");
         }
 
         public void AddGameState(GameState<U> gameState)
         {
             _GameStateMap.Add(gameState.ID, gameState);
 
-            Debug.LogError($"Added Game State to GSServices: [{gameState.ID}]");
+            Debug.Log($"Added Game State to GSServices: [{gameState.ID}]");
+        }
+
+        public void Start(U initialGameStateID)
+        {
+            if(_ActiveState == null)
+            {
+                SetGameState(initialGameStateID);
+            }
         }
 
         public void IssueTransition(T transitionID)
         {
-            Debug.LogError($"Issued Transition in GSServices: [{transitionID}]");
+            Debug.Log($"Issued Transition in GSServices: [{transitionID}]");
 
             Assert.IsTrue(_TransitionMap.TryGetValue(transitionID, out Transition<T,U> transitionOut));
             Assert.IsTrue(transitionOut.SourceGameStateID.Equals(_ActiveState.ID));

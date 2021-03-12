@@ -38,21 +38,23 @@ namespace WorkingTitle.GameFlow.FSMSystem
 
         public U InitialGameStateID => _InitialGameStateID;
 
-        public GSService<T, U> GSService => _GSService;
-
-        private void Awake()
+        public GSService<T,U> CreateGSService()
         {
             SetupGSService();
+
+            return _GSService;
         }
 
         private void SetupGSService()
         {
-            Debug.Log("GSService initialisation started.");
+            Debug.Log($"GSService initialisation started.");
 
-            _GSService = new GSService<T, U>(InitialGameStateID);
+            _GSService = new GSService<T, U>();
 
             AddTransitions();
             AddGameStates();
+
+            _GSService.Start(InitialGameStateID);
 
             Debug.Log("GSService initialisation complete.");
         }
