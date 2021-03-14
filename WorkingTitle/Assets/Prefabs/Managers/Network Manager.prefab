@@ -46,10 +46,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b1c72af9d364a664e8634b5f54c0caf5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dontDestroyOnLoad: 1
+  dontDestroyOnLoad: 0
   runInBackground: 1
   autoStartServerBuild: 1
-  showDebugMessages: 1
+  showDebugMessages: 0
   serverTickRate: 30
   serverBatching: 0
   serverBatchInterval: 0
@@ -67,8 +67,6 @@ MonoBehaviour:
   spawnPrefabs:
   - {fileID: 7806270060405410502, guid: 6cc08535775256d4482a83a39af45bde, type: 3}
   - {fileID: 4742915436281619812, guid: 8135bdc2b652b8147a00170d2ea3b802, type: 3}
-  - {fileID: 1874456743026115076, guid: 4639ef14872ac894990efb008da45a12, type: 3}
-  - {fileID: 773065875710732622, guid: 51f5b21bd3d1891499ae9a63f22863c4, type: 3}
   - {fileID: 6769380712087042894, guid: 9a470b90b43143c49aa803a662885e5a, type: 3}
 --- !u!114 &7651068391869949087
 MonoBehaviour:
