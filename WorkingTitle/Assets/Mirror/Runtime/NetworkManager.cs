@@ -91,6 +91,7 @@ namespace Mirror
         [Header("Scene Management")]
         [Scene]
         [FormerlySerializedAs("m_OfflineScene")]
+        [HideInInspector]
         [Tooltip("Scene that Mirror will switch to when the client or server is stopped")]
         public string offlineScene = "";
 
@@ -100,6 +101,7 @@ namespace Mirror
         /// </summary>
         [Scene]
         [FormerlySerializedAs("m_OnlineScene")]
+        [HideInInspector]
         [Tooltip("Scene that Mirror will switch to when the server is started. Clients will recieve a Scene Message to load the server's current scene when they connect.")]
         public string onlineScene = "";
 
@@ -152,6 +154,7 @@ namespace Mirror
         /// </summary>
         [Header("Player Object")]
         [FormerlySerializedAs("m_PlayerPrefab")]
+        [HideInInspector]
         [Tooltip("Prefab of the player object. Prefab must have a Network Identity component. May be an empty game object or a full avatar.")]
         public GameObject playerPrefab;
 
@@ -159,6 +162,7 @@ namespace Mirror
         /// A flag to control whether or not player objects are automatically created on connect, and on scene change.
         /// </summary>
         [FormerlySerializedAs("m_AutoCreatePlayer")]
+        [HideInInspector]
         [Tooltip("Should Mirror automatically spawn the player after scene change?")]
         public bool autoCreatePlayer = true;
 
@@ -167,6 +171,7 @@ namespace Mirror
         /// </summary>
         [FormerlySerializedAs("m_PlayerSpawnMethod")]
         [Tooltip("Round Robin or Random order of Start Position selection")]
+        [HideInInspector]
         public PlayerSpawnMethod playerSpawnMethod;
 
         /// <summary>

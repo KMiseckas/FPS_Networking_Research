@@ -5,13 +5,14 @@ using WorkingTitle.Networking;
 
 namespace WorkingTitle.GameFlow
 {
+    [RequireComponent(typeof(GameNetworkManager))]
     /// <summary>
     /// Singleton instance that exists through out the whole game. Manages the creation and initialisation of the starting game flow logic per scene.
     /// </summary>
-    public class GameInstance : MonoBehaviour
+    public class GameManager : MonoBehaviour
     {
         #region Fields
-        private static GameInstance _GameInstance;
+        private static GameManager _GameInstance;
 
         private static int _ConnectionToServerID;
 
@@ -26,7 +27,7 @@ namespace WorkingTitle.GameFlow
 
         #endregion
 
-        public static GameInstance GetInstance
+        public static GameManager GetInstance
         {
             get
             {
@@ -34,7 +35,7 @@ namespace WorkingTitle.GameFlow
                 {
                     if(_GameInstance == null)
                     {
-                        _GameInstance = FindObjectOfType<GameInstance>();
+                        _GameInstance = FindObjectOfType<GameManager>();
                     }
 
                     return _GameInstance;
@@ -51,6 +52,7 @@ namespace WorkingTitle.GameFlow
             GameNetworkManager.Client_OnClientConnectedToServer += OnClientConnectedToServer;
             GameNetworkManager.Client_OnClientDisconnectFromServer += OnClientDisconnectedFromServer;
             GameNetworkManager.Client_OnConnectedClientNoLongerReady += OnClientNotReady;
+            GameNetworkManager.Client_OnClientSceneChanged += OnClientSceneChanged;
 
             GameNetworkManager.Server_OnStartHost += OnStartServer;
             GameNetworkManager.Server_OnStopHost += OnStopServer;
@@ -61,6 +63,7 @@ namespace WorkingTitle.GameFlow
             GameNetworkManager.Client_OnClientConnectedToServer -= OnClientConnectedToServer;
             GameNetworkManager.Client_OnClientDisconnectFromServer -= OnClientDisconnectedFromServer;
             GameNetworkManager.Client_OnConnectedClientNoLongerReady -= OnClientNotReady;
+            GameNetworkManager.Client_OnClientSceneChanged -= OnClientSceneChanged;
 
             GameNetworkManager.Server_OnStartHost -= OnStartServer;
             GameNetworkManager.Server_OnStopHost -= OnStopServer;
@@ -95,13 +98,13 @@ namespace WorkingTitle.GameFlow
         [Client]
         private void OnClientConnectedToServer(NetworkConnection connection)
         {
-            //Request the server to initialise the player on the server and clients (as a `PlayerController` instance).
-            ClientScene.Ready (connection);
-            ClientScene.AddPlayer (connection);
+            AddNetworkedPlayer(connection);
+        }
 
-            ConnectionToServerID = connection.connectionId;
-
-            Debug.Log($"Client has connected to server with Connection ID [{connection.connectionId}]");
+        [Client]
+        private void OnClientSceneChanged(NetworkConnection connection)
+        {
+            AddNetworkedPlayer(connection);
         }
 
         [Client]
@@ -116,6 +119,22 @@ namespace WorkingTitle.GameFlow
             ConnectionToServerID = 0;
 
             Debug.Log($"Client has disconnected from server with Connection ID [{connection.connectionId}]");
+        }
+
+        /// <summary>
+        /// Add a networked player object to the client which will also tell the server to add the player.
+        /// </summary>
+        /// <param name="connection">Connvection of the owner for this player object.</param>
+        private void AddNetworkedPlayer(NetworkConnection connection)
+        {
+            if(ClientScene.ready && ClientScene.localPlayer == null)
+            {
+                ClientScene.AddPlayer(connection);
+
+                ConnectionToServerID = connection.connectionId;
+
+                Debug.Log($"Client has connected to server with Connection ID [{connection.connectionId}]");
+            }
         }
     }
 }

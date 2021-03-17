@@ -17,9 +17,17 @@ namespace WorkingTitle.Networking
         public static event ConnectionEventHandler Client_OnClientConnectedToServer;
         public static event ConnectionEventHandler Client_OnConnectedClientNoLongerReady;
         public static event ConnectionEventHandler Client_OnClientDisconnectFromServer;
+        public static event ConnectionEventHandler Client_OnClientSceneChanged;
 
         public static event ServerEventHandler Server_OnStartHost;
         public static event ServerEventHandler Server_OnStopHost;
+
+        public override void Awake()
+        {
+            autoCreatePlayer = false;
+
+            base.Awake();
+        }
 
         public override void ConfigureServerFrameRate()
         {
@@ -33,7 +41,9 @@ namespace WorkingTitle.Networking
 
         public override void OnServerDisconnect(NetworkConnection conn)
         {
-            Server_OnClientDisconnectFromServer (conn);
+            NetworkServer.DestroyPlayerForConnection(conn);
+
+            Server_OnClientDisconnectFromServer(conn);
         }
 
         public override void OnServerReady(NetworkConnection conn)
@@ -48,7 +58,13 @@ namespace WorkingTitle.Networking
 
         public override void OnClientConnect(NetworkConnection conn)
         {
-            Client_OnClientConnectedToServer (conn);
+            //Only ready the player on the initial connection if there is no scene that needs to be loaded (the current scene is the correct networked scene).
+            if(!clientLoadedScene && !ClientScene.ready)
+            {
+                ClientScene.Ready(conn);
+            }
+
+            Client_OnClientConnectedToServer(conn);
         }
 
         public override void OnClientDisconnect(NetworkConnection conn)
@@ -56,6 +72,16 @@ namespace WorkingTitle.Networking
             base.OnClientDisconnect (conn);
 
             Client_OnClientDisconnectFromServer (conn);
+        }
+
+        public override void OnClientSceneChanged(NetworkConnection conn)
+        {
+            if(!ClientScene.ready)
+            {
+                ClientScene.Ready(conn);
+            }
+
+            Client_OnClientSceneChanged(conn);
         }
 
         public override void OnStartServer()
