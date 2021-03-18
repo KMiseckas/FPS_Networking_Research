@@ -8,6 +8,7 @@ namespace WorkingTitle.Networking
     public class GameNetworkManager : NetworkManager
     {
         public delegate void ConnectionEventHandler(NetworkConnection connection);
+        public delegate void ServerSceneChangeHandler(string sceneName);
         public delegate void ServerEventHandler();
 
         public static event ConnectionEventHandler Server_OnConnectedClientReady;
@@ -18,6 +19,8 @@ namespace WorkingTitle.Networking
         public static event ConnectionEventHandler Client_OnConnectedClientNoLongerReady;
         public static event ConnectionEventHandler Client_OnClientDisconnectFromServer;
         public static event ConnectionEventHandler Client_OnClientSceneChanged;
+
+        public static event ServerSceneChangeHandler Server_OnServerSceneChanged;
 
         public static event ServerEventHandler Server_OnStartHost;
         public static event ServerEventHandler Server_OnStopHost;
@@ -82,6 +85,13 @@ namespace WorkingTitle.Networking
             }
 
             Client_OnClientSceneChanged(conn);
+        }
+
+        public override void OnServerSceneChanged(string sceneName)
+        {
+            base.OnServerSceneChanged(sceneName);
+
+            Server_OnServerSceneChanged(sceneName);
         }
 
         public override void OnStartServer()

@@ -25,9 +25,14 @@ namespace WorkingTitle.GameFlow
         [Tooltip("Prefab reference to the game mode that should be started in this game session")]
         private GameMode _GameMode;
 
+        /// <summary>
+        /// Singleton instance of this games network manager.
+        /// </summary>
+        private GameNetworkManager _NetworkManager;
+
         #endregion
 
-        public static GameManager GetInstance
+        public static GameManager Instance
         {
             get
             {
@@ -46,6 +51,7 @@ namespace WorkingTitle.GameFlow
         public GameMode GameMode { get => _GameMode; set => _GameMode=value; }
 
         public static int ConnectionToServerID { get => _ConnectionToServerID; set => _ConnectionToServerID=value; }
+        public GameNetworkManager NetworkManager { get => _NetworkManager; set => _NetworkManager=value; }
 
         private void OnEnable()
         {
@@ -53,6 +59,8 @@ namespace WorkingTitle.GameFlow
             GameNetworkManager.Client_OnClientDisconnectFromServer += OnClientDisconnectedFromServer;
             GameNetworkManager.Client_OnConnectedClientNoLongerReady += OnClientNotReady;
             GameNetworkManager.Client_OnClientSceneChanged += OnClientSceneChanged;
+
+            GameNetworkManager.Server_OnServerSceneChanged += OnServerSceneChanged;
 
             GameNetworkManager.Server_OnStartHost += OnStartServer;
             GameNetworkManager.Server_OnStopHost += OnStopServer;
@@ -64,6 +72,8 @@ namespace WorkingTitle.GameFlow
             GameNetworkManager.Client_OnClientDisconnectFromServer -= OnClientDisconnectedFromServer;
             GameNetworkManager.Client_OnConnectedClientNoLongerReady -= OnClientNotReady;
             GameNetworkManager.Client_OnClientSceneChanged -= OnClientSceneChanged;
+
+            GameNetworkManager.Server_OnServerSceneChanged -= OnServerSceneChanged;
 
             GameNetworkManager.Server_OnStartHost -= OnStartServer;
             GameNetworkManager.Server_OnStopHost -= OnStopServer;
@@ -80,13 +90,19 @@ namespace WorkingTitle.GameFlow
             _GameInstance = this;
 
             DontDestroyOnLoad (this);
+
+            _NetworkManager = GetComponent<GameNetworkManager>();
         }
 
         private void OnStartServer()
         {
-            if(NetworkServer.active)
+            Debug.Log("Server has started.");
+
+            if(NetworkServer.active && _NetworkManager.onlineScene == null)
             {
                 _GameMode = Instantiate(_GameMode);
+
+                Debug.Log("Game mode has been created!");
             }
         }
 
@@ -105,6 +121,19 @@ namespace WorkingTitle.GameFlow
         private void OnClientSceneChanged(NetworkConnection connection)
         {
             AddNetworkedPlayer(connection);
+        }
+
+        [Server]
+        private void OnServerSceneChanged(string sceneName)
+        {
+            Debug.Log("Server has changed scenes!");
+
+            if(NetworkServer.active)
+            {
+                _GameMode = Instantiate(_GameMode);
+
+                Debug.Log("Game mode has been created!");
+            }
         }
 
         [Client]
