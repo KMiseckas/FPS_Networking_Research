@@ -1,7 +1,9 @@
 using Mirror;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.SearchService;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using WorkingTitle.GameFlow;
 
@@ -24,12 +26,32 @@ namespace WorkingTitle
         [SerializeField]
         private InputField _IPField;
 
+        [SerializeField]
+        private InputField _MinPlayersField;
+
+        [SerializeField]
+        private InputField _MaxPlayersField;
+
+        [SerializeField]
+        private Dropdown _MapDropdown;
+
         [Scene]
         [SerializeField]
         private string _ServerScene;
 
         private void OnEnable()
         {
+            List<string> mapDisplayNames = new List<string>();
+
+            List<MapDefinitions.MapData> mapDataList = GameCore.Instance.MapDefinitions.MapDataList;
+
+            foreach(MapDefinitions.MapData mapData in mapDataList)
+            {
+                mapDisplayNames.Add(mapData.DisplayName);
+            }
+
+            _MapDropdown.AddOptions(mapDisplayNames);
+
             _JoinBtn.onClick.AddListener(OnJoinClick);
             _HostBtn.onClick.AddListener(OnHostClick);
             _ServerBtn.onClick.AddListener(OnServerClick);
@@ -46,22 +68,23 @@ namespace WorkingTitle
 
         private void OnJoinClick()
         {
-            string ipAddress = _IPField.text == "" ? "localhost" : _IPField.text;
-
-            GameManager.Instance.NetworkManager.networkAddress = ipAddress;
-            GameManager.Instance.NetworkManager.StartClient();
+            GameCore.Instance.Join(_IPField.text == "" ? "localhost" : _IPField.text);
         }
 
         private void OnHostClick()
         {
-            GameManager.Instance.NetworkManager.onlineScene = _ServerScene;
-            GameManager.Instance.NetworkManager.StartHost();
+            int.TryParse(_MinPlayersField.text, out int minPlayerResult);
+            int.TryParse(_MaxPlayersField.text, out int maxPlayerResult);
+
+            GameCore.Instance.Host(minPlayerResult, maxPlayerResult, _MapDropdown.options[_MapDropdown.value].text);
         }
 
         private void OnServerClick()
         {
-            GameManager.Instance.NetworkManager.onlineScene = _ServerScene;
-            GameManager.Instance.NetworkManager.StartServer();
+            int.TryParse(_MinPlayersField.text, out int minPlayerResult);
+            int.TryParse(_MaxPlayersField.text, out int maxPlayerResult);
+
+            GameCore.Instance.StartServer(minPlayerResult, maxPlayerResult, _MapDropdown.options[_MapDropdown.value].text);
         }
 
         private void OnExitClick()

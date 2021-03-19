@@ -6,13 +6,17 @@ using WorkingTitle.Networking;
 namespace WorkingTitle.GameFlow
 {
     [RequireComponent(typeof(GameNetworkManager))]
+    [RequireComponent(typeof(MapDefinitions))]
     /// <summary>
     /// Singleton instance that exists through out the whole game. Manages the creation and initialisation of the starting game flow logic per scene.
     /// </summary>
-    public class GameManager : MonoBehaviour
+    public class GameCore : MonoBehaviour
     {
+        private const int MIN_PLAYERS_REQUIRED = 2;
+        private const int MAX_PLAYERS_ALLOWED = 8;
+
         #region Fields
-        private static GameManager _GameInstance;
+        private static GameCore _GameInstance;
 
         private static int _ConnectionToServerID;
 
@@ -30,9 +34,14 @@ namespace WorkingTitle.GameFlow
         /// </summary>
         private GameNetworkManager _NetworkManager;
 
+        /// <summary>
+        /// Definitions of maps available in this game.
+        /// </summary>
+        private MapDefinitions _MapDefinitions;
+
         #endregion
 
-        public static GameManager Instance
+        public static GameCore Instance
         {
             get
             {
@@ -40,7 +49,7 @@ namespace WorkingTitle.GameFlow
                 {
                     if(_GameInstance == null)
                     {
-                        _GameInstance = FindObjectOfType<GameManager>();
+                        _GameInstance = FindObjectOfType<GameCore>();
                     }
 
                     return _GameInstance;
@@ -51,7 +60,9 @@ namespace WorkingTitle.GameFlow
         public GameMode GameMode { get => _GameMode; set => _GameMode=value; }
 
         public static int ConnectionToServerID { get => _ConnectionToServerID; set => _ConnectionToServerID=value; }
-        public GameNetworkManager NetworkManager { get => _NetworkManager; set => _NetworkManager=value; }
+        public GameNetworkManager NetworkManager => _NetworkManager;
+
+        public MapDefinitions MapDefinitions => _MapDefinitions;
 
         private void OnEnable()
         {
@@ -92,6 +103,7 @@ namespace WorkingTitle.GameFlow
             DontDestroyOnLoad (this);
 
             _NetworkManager = GetComponent<GameNetworkManager>();
+            _MapDefinitions = GetComponent<MapDefinitions>();
         }
 
         private void OnStartServer()
@@ -109,6 +121,44 @@ namespace WorkingTitle.GameFlow
         private void OnStopServer()
         {
 
+        }
+
+        /// <summary>
+        /// Join a server/host with a specific ip address.
+        /// </summary>
+        /// <param name="ipAddress">IP address of the server/host to join.</param>
+        public void Join(string ipAddress)
+        {
+            NetworkManager.networkAddress = ipAddress;
+            NetworkManager.StartClient();
+        }
+
+        /// <summary>
+        /// Host a server and be a client.
+        /// </summary>
+        /// <param name="minPlayers">Minimum amount of players before the game can be started.</param>
+        /// <param name="maxPlayers">Maximum amount of players allowed.</param>
+        /// <param name="sceneName">The map to load up.</param>
+        public void Host(int minPlayers, int maxPlayers, string mapDisplayName)
+        {
+            NetworkManager.maxConnections = Mathf.Min(maxPlayers, MAX_PLAYERS_ALLOWED);//TODO replace with other logic later down the line.
+
+            NetworkManager.onlineScene = _MapDefinitions.GetMapData(mapDisplayName).Scene;
+            NetworkManager.StartHost();
+        }
+
+        /// <summary>
+        /// Launch a server instance.
+        /// </summary>
+        /// <param name="minPlayers">Minimum amount of players before the game can be started.</param>
+        /// <param name="maxPlayers">Maximum amount of players allowed.</param>
+        /// <param name="mapName">The map to load up.</param>
+        public void StartServer(int minPlayers, int maxPlayers, string mapDisplayName)
+        {
+            NetworkManager.maxConnections = Mathf.Min(maxPlayers, MAX_PLAYERS_ALLOWED);//TODO replace with other logic later down the line.
+
+            NetworkManager.onlineScene = _MapDefinitions.GetMapData(mapDisplayName).Scene;
+            NetworkManager.StartServer();
         }
 
         [Client]
