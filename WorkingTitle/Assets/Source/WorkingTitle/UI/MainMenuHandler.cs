@@ -3,8 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEditor.SearchService;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using WorkingTitle.Enums;
 using WorkingTitle.GameFlow;
 
 namespace WorkingTitle
@@ -39,15 +41,21 @@ namespace WorkingTitle
         [SerializeField]
         private string _ServerScene;
 
+        private Dictionary<string, MapData> _MapDataTable;
+
         private void OnEnable()
         {
             List<string> mapDisplayNames = new List<string>();
 
-            List<MapDefinitions.MapData> mapDataList = GameCore.Instance.MapDefinitions.MapDataList;
+            _MapDataTable = new Dictionary<string, MapData>();
 
-            foreach(MapDefinitions.MapData mapData in mapDataList)
+            foreach(MapTable.Entry mapEntry in MapTable.Instance.Entries)
             {
-                mapDisplayNames.Add(mapData.DisplayName);
+                string displayName = mapEntry.Value.DisplayName;
+
+                mapDisplayNames.Add(displayName);
+
+                _MapDataTable.Add(displayName, mapEntry.Value);
             }
 
             _MapDropdown.AddOptions(mapDisplayNames);
@@ -76,7 +84,11 @@ namespace WorkingTitle
             int.TryParse(_MinPlayersField.text, out int minPlayerResult);
             int.TryParse(_MaxPlayersField.text, out int maxPlayerResult);
 
-            GameCore.Instance.Host(minPlayerResult, maxPlayerResult, _MapDropdown.options[_MapDropdown.value].text);
+            string chosenMapName = _MapDropdown.options[_MapDropdown.value].text;
+
+            Assert.IsFalse(!_MapDataTable.TryGetValue(chosenMapName, out MapData mapData), $"Map data associated to map of name [{chosenMapName}] not found!");
+
+            GameCore.Instance.Host(minPlayerResult, maxPlayerResult, mapData);
         }
 
         private void OnServerClick()
@@ -84,7 +96,11 @@ namespace WorkingTitle
             int.TryParse(_MinPlayersField.text, out int minPlayerResult);
             int.TryParse(_MaxPlayersField.text, out int maxPlayerResult);
 
-            GameCore.Instance.StartServer(minPlayerResult, maxPlayerResult, _MapDropdown.options[_MapDropdown.value].text);
+            string chosenMapName = _MapDropdown.options[_MapDropdown.value].text;
+
+            Assert.IsFalse(!_MapDataTable.TryGetValue(chosenMapName, out MapData mapData), $"Map data associated to map of name [{chosenMapName}] not found!");
+
+            GameCore.Instance.StartServer(minPlayerResult, maxPlayerResult, mapData);
         }
 
         private void OnExitClick()

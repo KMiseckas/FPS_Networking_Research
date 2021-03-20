@@ -1,12 +1,12 @@
 using Mirror;
 using UnityEngine;
 using WorkingTitle.Entities.Player;
+using WorkingTitle.Enums;
 using WorkingTitle.Networking;
 
 namespace WorkingTitle.GameFlow
 {
     [RequireComponent(typeof(GameNetworkManager))]
-    [RequireComponent(typeof(MapDefinitions))]
     /// <summary>
     /// Singleton instance that exists through out the whole game. Manages the creation and initialisation of the starting game flow logic per scene.
     /// </summary>
@@ -23,21 +23,21 @@ namespace WorkingTitle.GameFlow
         private static object _Lock = new object();
 
         /// <summary>
+        /// Reference to the instance of the <see cref="GameMode"/> instance for this game session. Exists on server only.
+        /// </summary>
+        private GameMode _GameMode;
+
+        /// <summary>
         /// Reference to the instance of the <see cref="GameMode"/> prefab for this game session. Exists on server only.
         /// </summary>
         [SerializeField]
         [Tooltip("Prefab reference to the game mode that should be started in this game session")]
-        private GameMode _GameMode;
+        private GameMode _GameModePrefab;
 
         /// <summary>
         /// Singleton instance of this games network manager.
         /// </summary>
         private GameNetworkManager _NetworkManager;
-
-        /// <summary>
-        /// Definitions of maps available in this game.
-        /// </summary>
-        private MapDefinitions _MapDefinitions;
 
         #endregion
 
@@ -61,8 +61,6 @@ namespace WorkingTitle.GameFlow
 
         public static int ConnectionToServerID { get => _ConnectionToServerID; set => _ConnectionToServerID=value; }
         public GameNetworkManager NetworkManager => _NetworkManager;
-
-        public MapDefinitions MapDefinitions => _MapDefinitions;
 
         private void OnEnable()
         {
@@ -100,19 +98,21 @@ namespace WorkingTitle.GameFlow
 
             _GameInstance = this;
 
-            DontDestroyOnLoad (this);
+            DontDestroyOnLoad(this);
 
             _NetworkManager = GetComponent<GameNetworkManager>();
-            _MapDefinitions = GetComponent<MapDefinitions>();
         }
 
         private void OnStartServer()
         {
             Debug.Log("Server has started.");
 
-            if(NetworkServer.active && _NetworkManager.onlineScene == null)
+            if(NetworkServer.active && (_NetworkManager.onlineScene == null || _NetworkManager.onlineScene == ""))
             {
-                _GameMode = Instantiate(_GameMode);
+                if(_GameMode == null)
+                {
+                    _GameMode = Instantiate(_GameModePrefab);
+                }
 
                 Debug.Log("Game mode has been created!");
             }
@@ -138,12 +138,12 @@ namespace WorkingTitle.GameFlow
         /// </summary>
         /// <param name="minPlayers">Minimum amount of players before the game can be started.</param>
         /// <param name="maxPlayers">Maximum amount of players allowed.</param>
-        /// <param name="sceneName">The map to load up.</param>
-        public void Host(int minPlayers, int maxPlayers, string mapDisplayName)
+        /// <param name="mapData">The data of the map to load up.</param>
+        public void Host(int minPlayers, int maxPlayers, MapData mapData)
         {
             NetworkManager.maxConnections = Mathf.Min(maxPlayers, MAX_PLAYERS_ALLOWED);//TODO replace with other logic later down the line.
 
-            NetworkManager.onlineScene = _MapDefinitions.GetMapData(mapDisplayName).Scene;
+            NetworkManager.onlineScene = mapData.Scene;
             NetworkManager.StartHost();
         }
 
@@ -152,12 +152,12 @@ namespace WorkingTitle.GameFlow
         /// </summary>
         /// <param name="minPlayers">Minimum amount of players before the game can be started.</param>
         /// <param name="maxPlayers">Maximum amount of players allowed.</param>
-        /// <param name="mapName">The map to load up.</param>
-        public void StartServer(int minPlayers, int maxPlayers, string mapDisplayName)
+        /// <param name="mapData">The data of the map to load up.</param>
+        public void StartServer(int minPlayers, int maxPlayers, MapData mapData)
         {
             NetworkManager.maxConnections = Mathf.Min(maxPlayers, MAX_PLAYERS_ALLOWED);//TODO replace with other logic later down the line.
 
-            NetworkManager.onlineScene = _MapDefinitions.GetMapData(mapDisplayName).Scene;
+            NetworkManager.onlineScene = mapData.Scene;
             NetworkManager.StartServer();
         }
 
@@ -180,7 +180,7 @@ namespace WorkingTitle.GameFlow
 
             if(NetworkServer.active)
             {
-                _GameMode = Instantiate(_GameMode);
+                _GameMode = Instantiate(_GameModePrefab);
 
                 Debug.Log("Game mode has been created!");
             }
