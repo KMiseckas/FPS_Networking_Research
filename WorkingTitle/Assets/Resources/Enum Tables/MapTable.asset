@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MapTable
   m_EditorClassIdentifier: 
   Entries:
-  - Key: Development Map
+  - Key: DevelopmentMap
     Value:
       _Map: 0
       _DisplayName: Dev Map
