@@ -9,7 +9,10 @@ EditorBuildSettings:
     path: 
     guid: 00000000000000000000000000000000
   - enabled: 1
-    path: Assets/Scenes/Development/Klaud_Networking.unity
+    path: Assets/WorkingTitle/Scenes/Release/Main Menu.unity
+    guid: 171d56d4a77a61340b3bc83d53cc69de
+  - enabled: 1
+    path: Assets/WorkingTitle/Scenes/Development/Klaud/Klaud_Networking.unity
     guid: 305a67f5579b4ad4f9f1468c52247c31
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: cc838b9ced3c3254aa4e858ef75f0ae6, type: 2}
