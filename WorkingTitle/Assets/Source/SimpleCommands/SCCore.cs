@@ -9,6 +9,7 @@ namespace SimpleCommands
 {
     public class SCCore : MonoBehaviour
     {
+        private const string OUTPUT_START = "> ";
         private const string ACTION_MAP_NAME = "Console";
         private const float COMMAND_TEXT_SIZE = 20;
         private const float COMMAND_VIEW_PADDING = 10;
@@ -39,6 +40,16 @@ namespace SimpleCommands
         [Range(50, 400)]
         private float _OutputConsoleHeight = 300;
 
+        [FormerlySerializedAs("history_size_output")]
+        [SerializeField]
+        [Min(10)]
+        private int _OutputHistoryCap = 200;
+
+        [FormerlySerializedAs("history_size_commands")]
+        [SerializeField]
+        [Min(1)]
+        private int _CommandHistoryCap = 20;
+
         private PlayerInput _Input;
 
         private String _CommandInput;
@@ -47,7 +58,7 @@ namespace SimpleCommands
 
         private bool _IsConsoleVisible = false;
 
-        private float _OutputLinesUsed = 0;
+        private LinkedList<string> _OutputConsoleLines = new LinkedList<string>();
 
         private LinkedList<string> _CommandHistory = new LinkedList<string>();
 
@@ -60,8 +71,40 @@ namespace SimpleCommands
         [SerializeField]
         private CommandDefinitions _Definitions;
 
+        private bool _NewOutputAdded;
+
+        private static SCCore _Instance;
+
+        private static object _Lock = new object();
+
+        public static SCCore Instance
+        {
+            get
+            {
+                lock(_Lock)
+                {
+                    if(_Instance == null)
+                    {
+                        _Instance = FindObjectOfType<SCCore>();
+                    }
+
+                    return _Instance;
+                }
+            }
+        }
+
         private void Awake()
         {
+            if(_Instance != null)
+            {
+                Destroy(this.gameObject);
+                return;
+            }
+
+            _Instance = this;
+
+            DontDestroyOnLoad(this);
+
             SetupConsoleTextures();
 
             _Input = GetComponent<PlayerInput>();
@@ -130,8 +173,16 @@ namespace SimpleCommands
 
         private void IssueCommand(InputAction.CallbackContext obj)
         {
+            if(_CommandInput == null || _CommandInput == "")
+                return;
+
             _CommandHistory.AddFirst(_CommandInput);
             _CurrentlyDisplayedCommand = _CommandHistory.First;
+
+            if(_CommandHistory.Count > _CommandHistoryCap)
+            {
+                _CommandHistory.RemoveLast();
+            }
 
             string[] splitCommand = _CommandInput.Split(' ');
 
@@ -150,7 +201,14 @@ namespace SimpleCommands
 
             if(!_Definitions.ExecuteCommand(commandKey.ToLower(), data, out string message))
             {
-                Debug.LogWarning("Failed Command: " + message);
+                string failedMessage = "Failed command: " + message;
+
+                Debug.LogWarning(failedMessage);
+                AddConsoleOutput(failedMessage);
+            }
+            else
+            {
+                AddConsoleOutput(message);
             }
 
             _CommandInput = "";
@@ -185,6 +243,18 @@ namespace SimpleCommands
             _CommandInput = commandString;
         }
 
+        public static void AddConsoleOutput(string output)
+        {
+            Instance._OutputConsoleLines.AddLast(OUTPUT_START + output);
+
+            if(Instance._OutputConsoleLines.Count > Instance._OutputHistoryCap)
+            {
+                Instance._OutputConsoleLines.RemoveFirst();
+            }
+
+            Instance._NewOutputAdded = true;
+        }
+
         private void OnGUI()
         {
             if(!_IsConsoleVisible)
@@ -205,21 +275,35 @@ namespace SimpleCommands
 
             GUI.Box(dimensions, "", boxStyle);
          
-            Rect scrollViewRect = new Rect(0, 0, dimensions.width, COMMAND_TEXT_SIZE * _OutputLinesUsed);
+            Rect scrollViewRect = new Rect(0, 0, 0, COMMAND_TEXT_SIZE * _OutputConsoleLines.Count);
 
             _ScrollPosition = GUI.BeginScrollView(dimensions, _ScrollPosition, scrollViewRect);
 
-            GUIStyle style = new GUIStyle();
-            style.padding.left = 10;
-            style.padding.right = 10;
-            style.padding.bottom = 10;
-            style.padding.top = 10;
-            style.wordWrap = false;
-
-            GUI.TextArea(dimensions, "", style);
             GUI.contentColor = _OutputTextColour;
 
+            LinkedListNode<string> nextNode = _OutputConsoleLines.First;
+            int iteration = 0;
+
+            Rect labelRect = default;
+
+            while(nextNode != null)
+            {
+                labelRect = new Rect(5, (20 * iteration), width, COMMAND_TEXT_SIZE);
+
+                GUI.Label(labelRect, nextNode.Value);
+
+                iteration++;
+                nextNode = nextNode.Next;
+            }
+
+            if(labelRect != null && _NewOutputAdded)
+            {
+                GUI.ScrollTo(labelRect);
+            }
+
             GUI.EndScrollView();
+
+            _NewOutputAdded = false;
         }
 
         private void CreateCommandField()
